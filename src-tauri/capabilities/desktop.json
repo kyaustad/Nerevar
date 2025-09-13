@@ -1,0 +1,21 @@
+{
+  "identifier": "desktop-capability",
+  "platforms": ["macOS", "windows", "linux"],
+  "windows": ["main"],
+  "permissions": [
+    "cli:default",
+    "fs:default",
+    "http:default",
+    "fs:deny-default",
+    "fs:write-all",
+    "fs:read-all",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://*.nerevar.com" },
+        { "url": "https://github.com" },
+        { "url": "https://github.com/**/*" }
+      ]
+    }
+  ]
+}
