@@ -8,12 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
-
-export type NerevarConfig = {
-  tes3mp_path: string;
-  version: string;
-  last_updated: string;
-};
+import { type NerevarConfig } from "@/types/nerevar-config";
 
 export type ConfigContextType = {
   config: NerevarConfig | null;

@@ -3,6 +3,8 @@ use std::io::BufReader;
 use std::path::Path;
 use zip::ZipArchive;
 use serde::{Deserialize, Serialize};
+use dirs;
+use tauri::Emitter;
 
 #[derive(Serialize, Deserialize)]
 struct NerevarConfig {
@@ -11,13 +13,26 @@ struct NerevarConfig {
     last_updated: String,
 }
 
+// Use a flexible map for OpenMW config since it can contain any settings
+type OpenMWConfig = std::collections::HashMap<String, serde_json::Value>;
+
+fn get_documents_folder() -> Result<std::path::PathBuf, String> {
+    if let Some(documents_dir) = dirs::document_dir() {
+        log::info!("Documents directory: {}", documents_dir.display());
+        return Ok(documents_dir);
+    } else {
+        Err(format!("Failed to get documents directory"))
+    }
+}
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_cli::init())
-        .invoke_handler(tauri::generate_handler![download_latest_windows_release, get_nerevar_config])
+        .invoke_handler(tauri::generate_handler![download_latest_windows_release, get_nerevar_config, get_openmw_config, run_openmw_wizard, run_openmw_launcher])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -238,4 +253,224 @@ fn get_nerevar_config() -> Result<Option<NerevarConfig>, String> {
     
     log::info!("Loaded TES3MP config: {}", config.tes3mp_path);
     Ok(Some(config))
+
+}
+
+#[tauri::command]
+fn get_openmw_config() -> Result<Option<OpenMWConfig>, String> {
+    // Get the Documents folder using dirs crate
+    let documents_dir = get_documents_folder()?;
+    let openmw_dir = documents_dir.join("My Games/OpenMW");
+    let config_path = openmw_dir.join("openmw.cfg");
+    
+    log::info!("Checking for openmw.cfg at: {}", config_path.display());
+
+    // Check if config file exists first
+    if !config_path.exists() {
+        log::info!("No config file found at: {}", config_path.display());
+        return Ok(None);
+    }
+
+    // Read the config file content
+    let config_content = fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to read config file: {}", e))?;
+    
+    log::info!("Read config file content ({} bytes)", config_content.len());
+    
+    // Parse OpenMW config file (INI format)
+    let config = parse_openmw_config(&config_content)?;
+    
+    log::info!("Loaded OpenMW config with {} settings", config.len());
+    Ok(Some(config))
+}
+
+fn parse_openmw_config(content: &str) -> Result<OpenMWConfig, String> {
+    let mut config = std::collections::HashMap::new();
+    
+    for line in content.lines() {
+        let line = line.trim();
+        
+        // Skip comments and empty lines
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        
+        // Parse key=value pairs
+        if let Some((key, value)) = line.split_once('=') {
+            let key = key.trim();
+            let value = value.trim();
+            
+            // Remove quotes if present
+            let clean_value = value.trim_matches('"').trim_matches('\'');
+            
+            // Try to parse as different types, defaulting to string
+            let json_value = if clean_value.parse::<i64>().is_ok() {
+                serde_json::Value::Number(serde_json::Number::from(clean_value.parse::<i64>().unwrap()))
+            } else if clean_value.parse::<f64>().is_ok() {
+                serde_json::Value::Number(serde_json::Number::from_f64(clean_value.parse::<f64>().unwrap()).unwrap())
+            } else if clean_value == "true" || clean_value == "false" {
+                serde_json::Value::Bool(clean_value == "true")
+            } else {
+                serde_json::Value::String(clean_value.to_string())
+            };
+            
+            config.insert(key.to_string(), json_value);
+        }
+    }
+    
+    Ok(config)
+}
+
+#[tauri::command]
+async fn run_openmw_wizard(app_handle: tauri::AppHandle) -> Result<String, String> {
+    log::info!("Running OpenMW wizard");
+    
+    // Get the nerevar config to find the TES3MP installation path
+    let nerevar_config = get_nerevar_config()
+        .map_err(|e| format!("Failed to get Nerevar config: {}", e))?;
+    
+    let config = nerevar_config.ok_or("No Nerevar config found. Please install TES3MP first.")?;
+    let tes3mp_path = config.tes3mp_path;
+    
+    // Construct the path to the OpenMW wizard executable
+    let openmw_wizard_path = Path::new(&tes3mp_path).join("openmw-wizard.exe");
+    
+    // Check if the wizard executable exists
+    if !openmw_wizard_path.exists() {
+        return Err(format!("OpenMW wizard not found at: {}", openmw_wizard_path.display()));
+    }
+    
+    log::info!("Running OpenMW wizard at: {}", openmw_wizard_path.display());
+    
+    // Spawn the OpenMW wizard process
+    let mut child = std::process::Command::new(&openmw_wizard_path)
+        .spawn()
+        .map_err(|e| format!("Failed to run OpenMW wizard: {}", e))?;
+    
+    let pid = child.id();
+    log::info!("OpenMW wizard started successfully (PID: {})", pid);
+    
+    // Send initial event that wizard started
+    app_handle.emit("openmw-wizard-started", &pid)
+        .map_err(|e| format!("Failed to emit wizard started event: {}", e))?;
+    
+    // Spawn a task to monitor the process
+    tokio::spawn(async move {
+        // Wait for the process to complete
+        match child.wait() {
+            Ok(status) => {
+                let event_data = serde_json::json!({
+                    "pid": pid,
+                    "success": status.success(),
+                    "exit_code": status.code(),
+                    "message": if status.success() {
+                        "OpenMW wizard completed successfully"
+                    } else {
+                        "OpenMW wizard exited with an error"
+                    }
+                });
+                
+                log::info!("OpenMW wizard (PID: {}) exited with status: {:?}", pid, status.code());
+                
+                // Emit the completion event
+                if let Err(e) = app_handle.emit("openmw-wizard-exited", &event_data) {
+                    log::error!("Failed to emit wizard exited event: {}", e);
+                }
+            }
+            Err(e) => {
+                let event_data = serde_json::json!({
+                    "pid": pid,
+                    "success": false,
+                    "exit_code": None::<i32>,
+                    "message": format!("Failed to wait for OpenMW wizard: {}", e)
+                });
+                
+                log::error!("Failed to wait for OpenMW wizard (PID: {}): {}", pid, e);
+                
+                // Emit the error event
+                if let Err(emit_err) = app_handle.emit("openmw-wizard-exited", &event_data) {
+                    log::error!("Failed to emit wizard error event: {}", emit_err);
+                }
+            }
+        }
+    });
+    
+    Ok(format!("OpenMW wizard started successfully (PID: {})", pid))
+}
+
+#[tauri::command]
+async fn run_openmw_launcher(app_handle: tauri::AppHandle) -> Result<String, String> {
+    log::info!("Running OpenMW launcher");
+    
+    // Get the nerevar config to find the TES3MP installation path
+    let nerevar_config = get_nerevar_config()
+        .map_err(|e| format!("Failed to get Nerevar config: {}", e))?;
+    
+    let config = nerevar_config.ok_or("No Nerevar config found. Please install TES3MP first.")?;
+    let tes3mp_path = config.tes3mp_path;
+    
+    // Construct the path to the OpenMW wizard executable
+    let openmw_launcher_path = Path::new(&tes3mp_path).join("openmw-launcher.exe");
+    
+    // Check if the wizard executable exists
+    if !openmw_launcher_path.exists() {
+        return Err(format!("OpenMW launcher not found at: {}", openmw_launcher_path.display()));
+    }
+    
+    log::info!("Running OpenMW launcher at: {}", openmw_launcher_path.display());
+    
+    // Spawn the OpenMW wizard process
+    let mut child = std::process::Command::new(&openmw_launcher_path)
+        .spawn()
+        .map_err(|e| format!("Failed to run OpenMW launcher: {}", e))?;
+    
+    let pid = child.id();
+    log::info!("OpenMW launcher started successfully (PID: {})", pid);
+    
+    // Send initial event that wizard started
+    app_handle.emit("openmw-launcher-started", &pid)
+        .map_err(|e| format!("Failed to emit wizard started event: {}", e))?;
+    
+    // Spawn a task to monitor the process
+    tokio::spawn(async move {
+        // Wait for the process to complete
+        match child.wait() {
+            Ok(status) => {
+                let event_data = serde_json::json!({
+                    "pid": pid,
+                    "success": status.success(),
+                    "exit_code": status.code(),
+                    "message": if status.success() {
+                        "OpenMW launcher completed successfully"
+                    } else {
+                        "OpenMW launcher exited with an error"
+                    }
+                });
+                
+                log::info!("OpenMW launcher (PID: {}) exited with status: {:?}", pid, status.code());
+                
+                // Emit the completion event
+                if let Err(e) = app_handle.emit("openmw-launcher-exited", &event_data) {
+                    log::error!("Failed to emit wizard exited event: {}", e);
+                }
+            }
+            Err(e) => {
+                let event_data = serde_json::json!({
+                    "pid": pid,
+                    "success": false,
+                    "exit_code": None::<i32>,
+                    "message": format!("Failed to wait for OpenMW launcher: {}", e)
+                });
+                
+                log::error!("Failed to wait for OpenMW launcher (PID: {}): {}", pid, e);
+                
+                // Emit the error event
+                if let Err(emit_err) = app_handle.emit("openmw-launcher-exited", &event_data) {
+                    log::error!("Failed to emit wizard error event: {}", emit_err);
+                }
+            }
+        }
+    });
+    
+    Ok(format!("OpenMW launcher started successfully (PID: {})", pid))
 }

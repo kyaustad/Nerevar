@@ -9,6 +9,8 @@
     "fs:deny-default",
     "fs:write-all",
     "fs:read-all",
+    "core:window:default",
+    "core:window:allow-start-dragging",
     {
       "identifier": "http:default",
       "allow": [

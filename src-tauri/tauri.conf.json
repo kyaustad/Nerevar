@@ -15,8 +15,10 @@
         "title": "Nerevar",
         "width": 1280,
         "height": 720,
-        "resizable": true,
-        "fullscreen": false
+        "resizable": false,
+        "fullscreen": false,
+        "titleBarStyle": "Visible",
+        "decorations": false
       }
     ],
     "security": {
