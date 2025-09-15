@@ -111,7 +111,7 @@ export function OpenMWWizardCard({ className }: { className?: string }) {
 
         {isRunning && (
           <p className="text-xs text-muted-foreground text-center">
-            The wizard is running. You'll be notified when it completes.
+            {`The wizard is running. You'll be notified when it completes.`}
           </p>
         )}
       </CardContent>

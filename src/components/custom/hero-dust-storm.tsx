@@ -7,18 +7,16 @@ import BackgroundEmbers from "./background-embers";
 const HeroFireBanner = ({
   title = "NEREVAR",
   subtitle = "Rise from the ashes",
-  cta = "Enter the Flame",
   className = "",
   children,
 }: {
   title?: string;
   subtitle?: string;
-  cta?: string;
   className?: string;
   children?: React.ReactNode;
 }) => {
   return (
-    <BackgroundEmbers className={cn("min-h-screen", className)}>
+    <BackgroundEmbers className={cn("min-h-full", className)}>
       {/* Main content */}
       <div className="flex items-center justify-center min-h-full px-4 py-8">
         <motion.div

@@ -10,12 +10,14 @@ interface BackgroundEmbersProps {
   className?: string;
   contentClassName?: string;
   children?: React.ReactNode;
+  particlesEnabled?: boolean;
 }
 
 const BackgroundEmbers = ({
   className = "",
   children,
   contentClassName = "",
+  particlesEnabled = true,
 }: BackgroundEmbersProps) => {
   const [init, setInit] = useState(false);
 
@@ -118,7 +120,7 @@ const BackgroundEmbers = ({
 
   return (
     <div
-      className={cn("relative overflow-hidden h-full w-full", className)}
+      className={cn("relative h-full w-full", className)}
       style={{
         background: `
           radial-gradient(circle at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.8) 100%),
@@ -142,7 +144,7 @@ const BackgroundEmbers = ({
       />
 
       {/* tsParticles Fire Effect */}
-      {init && (
+      {init && particlesEnabled && (
         <Particles
           id="fire-particles"
           particlesLoaded={particlesLoaded}
@@ -156,6 +158,13 @@ const BackgroundEmbers = ({
             height: "100%",
           }}
         />
+      )}
+      {/* background color to replicate particle color when particles are disabled */}
+      {!particlesEnabled && (
+        <div
+          className="absolute inset-0 z-0"
+          style={{ background: "#4a0000" }}
+        ></div>
       )}
 
       {/* Additional fire glow effect at bottom */}
@@ -215,7 +224,7 @@ const BackgroundEmbers = ({
       {/* Content layer */}
       <div
         className={cn(
-          "absolute inset-0 z-20 overflow-y-auto",
+          "absolute inset-0 z-20 overflow-y-auto py-12 pb-16",
           contentClassName
         )}
       >

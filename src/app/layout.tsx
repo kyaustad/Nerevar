@@ -1,22 +1,19 @@
 "use client";
 
-import {
-  ChevronDownIcon,
-  ExpandIcon,
-  Maximize2Icon,
-  SquareXIcon,
-  XIcon,
-} from "lucide-react";
+import { ChevronDownIcon, Maximize2Icon, XIcon } from "lucide-react";
 import "./globals.css";
 import { Providers } from "./providers";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+//import { env } from "@/env";
+import { invoke } from "@tauri-apps/api/core";
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [currentAppVersion, setCurrentAppVersion] = useState("");
   useEffect(() => {
     // Only run on client side
     if (typeof window !== "undefined") {
@@ -34,12 +31,30 @@ export default function RootLayout({
       }
     }
   }, []);
+  const getCurrentAppVersion = async (): Promise<string> => {
+    try {
+      const version = await invoke("get_app_version");
+      return version as string;
+    } catch (error) {
+      console.error("Failed to get app version:", error);
+      return "";
+    }
+  };
+  useEffect(() => {
+    getCurrentAppVersion().then((version) => {
+      setCurrentAppVersion(version);
+    });
+  }, []);
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
         <div className="titlebar">
-          <div data-tauri-drag-region className="flex-1"></div>
-          <div className="controls flex items-center gap-2">
+          <div data-tauri-drag-region className="flex-1 items-center">
+            <p className="text-xs text-muted-foreground/50 font-extralight text-left p-2">
+              {`Nerevar v.${currentAppVersion}`}
+            </p>
+          </div>
+          <div className="controls flex items-center gap-2 justify-center">
             <button id="titlebar-minimize" title="minimize">
               {/* https://api.iconify.design/mdi:window-minimize.svg */}
               {/* <svg
@@ -81,7 +96,7 @@ export default function RootLayout({
             </button>
           </div>
         </div>
-        <div className="content-container">
+        <div className="min-h-[calc(100vh-30px)] pt-[30px] w-full overflow-y-auto overflow-x-hidden">
           <Providers>{children}</Providers>
         </div>
       </body>

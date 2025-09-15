@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import HeroDustStorm from "@/components/custom/hero-dust-storm";
-import { env } from "@/env";
 import { invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -14,39 +13,31 @@ import { CheckCircle } from "lucide-react";
 export function InitialSetup({ onFinish }: { onFinish: () => void }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [tes3mpInstalled, setTes3mpInstalled] = useState(false);
-  const { config, isLoading, error, refreshConfig, clearConfig } =
-    useOpenMWConfig();
+  const { config, isLoading, refreshConfig } = useOpenMWConfig();
   const { isRunning, wizardPid, lastResult } = useOpenMWWizard();
 
   const handleCTAClick = async () => {
     setIsDownloading(true);
 
-    const tes3mpReleaseUrl = env.NEXT_PUBLIC_LATEST_TES3MP_WINDOWS_RELEASE;
+    toast.promise(invoke("download_latest_windows_release"), {
+      loading: "Installing TES3MP...",
+      success: async (data) => {
+        if (!data) {
+          throw new Error("Failed to install TES3MP");
+        }
+        await refreshConfig();
 
-    toast.promise(
-      invoke("download_latest_windows_release", {
-        url: tes3mpReleaseUrl,
-      }),
-      {
-        loading: "Installing TES3MP...",
-        success: async (data) => {
-          if (!data) {
-            throw new Error("Failed to install TES3MP");
-          }
-          await refreshConfig();
-
-          setIsDownloading(false);
-          setTes3mpInstalled(true);
-          return "TES3MP installed successfully";
-        },
-        error: (error) => {
-          console.error("Tes3MP installation error:", error);
-          setIsDownloading(false);
-          setTes3mpInstalled(false);
-          return "TES3MP installation error";
-        },
-      }
-    );
+        setIsDownloading(false);
+        setTes3mpInstalled(true);
+        return "TES3MP installed successfully";
+      },
+      error: (error) => {
+        console.error("Tes3MP installation error:", error);
+        setIsDownloading(false);
+        setTes3mpInstalled(false);
+        return "TES3MP installation error";
+      },
+    });
   };
 
   const handleOpenMWWizardClick = async () => {
@@ -59,7 +50,7 @@ export function InitialSetup({ onFinish }: { onFinish: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+    <div className="min-h-[calc(100vh-30px)] bg-background flex flex-col items-center justify-center">
       {tes3mpInstalled && (
         <div className="fixed top-8 inset-x-0 h-16 flex items-center justify-center z-50 bg-background/50 text-white p-4 rounded-lg text-center">
           {`Tes3MP Installed Successfully`}
@@ -72,7 +63,7 @@ export function InitialSetup({ onFinish }: { onFinish: () => void }) {
       )}
 
       <HeroDustStorm
-        className="grow w-full min-h-screen flex items-center justify-center"
+        className="grow w-full min-h-full flex items-center justify-center"
         title="NEREVAR"
         subtitle="Morrowind Multiplayer Manager"
       >
@@ -81,7 +72,7 @@ export function InitialSetup({ onFinish }: { onFinish: () => void }) {
           <Image src="/logo.webp" alt="Logo" width={150} height={150} />
         </div>
         {/* CTA Button with fire effect - positioned like original */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="sync">
           {!tes3mpInstalled && !isDownloading && (
             <motion.button
               key="install-tes3mp"

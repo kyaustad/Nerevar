@@ -11,8 +11,8 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <BackgroundEmbers className="min-h-screen w-full h-full flex items-center justify-center">
-        <div className="flex items-center justify-center h-full w-full">
+      <BackgroundEmbers className="min-h-[calc(100vh-30px)] w-full  flex items-center justify-center">
+        <div className="flex items-center  justify-center h-full w-full">
           <Loader2 className="animate-spin min-w-16 min-h-16 text-white/50 font-bold text-2xl" />
         </div>
       </BackgroundEmbers>

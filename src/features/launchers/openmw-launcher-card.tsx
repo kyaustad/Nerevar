@@ -111,7 +111,7 @@ export function OpenMWLauncherCard({ className }: { className?: string }) {
 
         {isRunning && (
           <p className="text-xs text-muted-foreground text-center">
-            The Launcher is running. You'll be notified when it completes.
+            {`The Launcher is running. You'll be notified when it completes.`}
           </p>
         )}
       </CardContent>

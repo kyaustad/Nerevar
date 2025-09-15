@@ -17,6 +17,7 @@ export type ConfigContextType = {
   isValid: boolean;
   refreshConfig: () => Promise<void>;
   clearConfig: () => void;
+  setMode: (mode: "player" | "server") => void;
 };
 
 export const ConfigContext = createContext<ConfigContextType | undefined>(
@@ -74,6 +75,15 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
     loadConfig();
   }, []);
 
+  const setMode = async (mode: "player" | "server") => {
+    try {
+      await invoke("set_mode", { mode });
+      setConfig((prevConfig) => ({ ...prevConfig, mode } as NerevarConfig));
+    } catch (error) {
+      console.error("Failed to set mode:", error);
+    }
+  };
+
   const value: ConfigContextType = {
     config,
     isLoading,
@@ -81,6 +91,7 @@ export const ConfigProvider = ({ children }: ConfigProviderProps) => {
     isValid,
     refreshConfig,
     clearConfig,
+    setMode,
   };
 
   return (

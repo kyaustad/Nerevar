@@ -20,6 +20,7 @@
 # production
 /build
 /src-tauri/gen/*
+*/*/tes3mp_latest.zip
 
 # misc
 .DS_Store
@@ -40,3 +41,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+src-tauri/tes3mp_latest.zip
