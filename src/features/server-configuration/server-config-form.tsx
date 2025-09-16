@@ -25,7 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { SaveIcon } from "lucide-react";
+import { SaveIcon, TrashIcon } from "lucide-react";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   general: z.object({
@@ -72,42 +73,100 @@ export function ServerConfigurationForm() {
       },
     },
   });
-  const [serverConfig, setServerConfig] = useState<Tes3MPServerConfig | null>(
-    null
-  );
 
+  const getServerConfig = async () => {
+    const configResponse = await invoke("get_tes3mp_server_config");
+    const config = configResponse as Tes3MPServerConfig;
+    console.log("Read Server Config:", config);
+    // setServerConfig(config as Tes3MPServerConfig);
+    form.reset({
+      general: {
+        local_address: config.general.local_address,
+        port: config.general.port,
+        maximum_players: config.general.maximum_players,
+        hostname: config.general.hostname,
+        log_level: config.general.log_level,
+        password: config.general.password,
+      },
+      plugins: {
+        home: config.plugins.home,
+        plugins: config.plugins.plugins,
+      },
+      master_server: {
+        enabled: config.master_server.enabled,
+        address: config.master_server.address,
+        port: config.master_server.port,
+        rate: config.master_server.rate,
+      },
+    });
+  };
   useEffect(() => {
-    const getServerConfig = async () => {
-      const configResponse = await invoke("get_tes3mp_server_config");
-      const config = configResponse as Tes3MPServerConfig;
-      console.log("Read Server Config:", config);
-      setServerConfig(config as Tes3MPServerConfig);
-      form.reset({
-        general: {
-          local_address: config.general.local_address,
-          port: config.general.port,
-          maximum_players: config.general.maximum_players,
-          hostname: config.general.hostname,
-          log_level: config.general.log_level,
-          password: config.general.password,
-        },
-        plugins: {
-          home: config.plugins.home,
-          plugins: config.plugins.plugins,
-        },
-        master_server: {
-          enabled: config.master_server.enabled,
-          address: config.master_server.address,
-          port: config.master_server.port,
-          rate: config.master_server.rate,
-        },
-      });
-    };
     getServerConfig();
   }, []);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log(values);
+    try {
+      toast.promise(
+        invoke("set_tes3mp_server_config", {
+          config: {
+            general: {
+              ...values.general,
+              localAddress: values.general.local_address,
+              maximumPlayers: values.general.maximum_players,
+              logLevel: values.general.log_level,
+            },
+            masterServer: {
+              ...values.master_server,
+            },
+          },
+        }),
+        {
+          loading: "Saving config...",
+          success: "Server config saved successfully",
+          error: "Failed to save server config",
+        }
+      );
+    } catch (error) {
+      console.error("Failed to save server config:", error);
+      toast.error("Failed to save server config");
+    }
+  }
+
+  function resetToDefaults() {
+    try {
+      toast.promise(
+        invoke("set_tes3mp_server_config", {
+          config: {
+            general: {
+              localAddress: "0.0.0.0",
+              port: 25565,
+              maximumPlayers: 64,
+              logLevel: 1,
+              password: "",
+              hostname: "TES3MP Server",
+            },
+            masterServer: {
+              enabled: true,
+              address: "master.tes3mp.com",
+              port: 25561,
+              rate: 10000,
+            },
+          },
+        }),
+        {
+          loading: "Resetting to defaults...",
+          success: async (data) => {
+            await getServerConfig();
+            return "Server config reset to defaults";
+          },
+          error: "Failed to reset to defaults",
+        }
+      );
+    } catch (error) {
+      console.error("Failed to reset to defaults:", error);
+      toast.error("Failed to reset to defaults");
+    }
   }
 
   return (
@@ -156,6 +215,7 @@ export function ServerConfigurationForm() {
                       step={1}
                       {...field}
                       value={field.value || ""}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
                     />
                   </FormControl>
                   <FormMessage />
@@ -182,6 +242,7 @@ export function ServerConfigurationForm() {
                       step={1}
                       {...field}
                       value={field.value || ""}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
                     />
                   </FormControl>
                   <FormMessage />
@@ -333,6 +394,7 @@ export function ServerConfigurationForm() {
                         step={1}
                         {...field}
                         value={field.value || ""}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     </FormControl>
 
@@ -356,6 +418,7 @@ export function ServerConfigurationForm() {
                         step={1}
                         {...field}
                         value={field.value || ""}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     </FormControl>
 
@@ -366,10 +429,21 @@ export function ServerConfigurationForm() {
             </div>
           </div>
         </div>
-        <Button type="submit" className="w-full ">
-          <SaveIcon className="w-4 h-4" />
-          Save
-        </Button>
+        <div className="flex flex-col gap-2 w-full">
+          <Button type="submit" className="w-full ">
+            <SaveIcon className="w-4 h-4" />
+            Save
+          </Button>
+          <Button
+            type="button"
+            className="w-full "
+            variant="destructive"
+            onClick={resetToDefaults}
+          >
+            <TrashIcon className="w-4 h-4" />
+            Reset to Tes3MP defaults
+          </Button>
+        </div>
       </form>
     </Form>
   );
