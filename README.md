@@ -6,7 +6,7 @@
 - [ ] Manage your Tes3MP server installation and updates without losing data
 - [x] Browse and connect to Tes3MP servers
 - [ ] Manage OpenMW specific settings in Nerevar
-- [ ] Manage Tes3MP specific settings
+- [x] Manage Tes3MP specific settings
 - [x] Auto update process for the Nerevar app
 - [ ] Server script sharing and compatible version tagging
 - [ ] Bundled mod pack link sharing for servers
