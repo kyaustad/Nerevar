@@ -17,8 +17,9 @@ import { useConfig } from "@/features/app-config/context/config-context";
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { SquarePenIcon } from "lucide-react";
+import { RouterIcon, SquarePenIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Tes3MPServerCard } from "@/features/launchers/tes3mp-server-card";
 
 export function Dashboard() {
   const { config, isLoading } = useConfig();
@@ -120,6 +121,10 @@ export function Dashboard() {
 
               {currentMode === "server" && (
                 <>
+                  <div className="flex flex-col col-span-1 gap-4 w-full h-full items-start">
+                    <Tes3MPServerCard className="w-full max-w-md max-h-64 min-h-full" />
+                  </div>
+
                   <Separator className="w-full col-span-2" />
                   <div className="flex flex-col col-span-2 justify-center items-center gap-2">
                     <div className="flex flex-row gap-2 items-center justify-center text-center">
@@ -136,10 +141,17 @@ export function Dashboard() {
                   </div>
                   <Button
                     className="w-full"
-                    onClick={() => router.push("/edit-server-settings")}
+                    onClick={() => router.push("/edit-server-config")}
                   >
                     <SquarePenIcon />
                     Server Configuration
+                  </Button>
+                  <Button
+                    className="w-full"
+                    onClick={() => router.push("/edit-server-settings")}
+                  >
+                    <RouterIcon />
+                    Server Settings
                   </Button>
                 </>
               )}

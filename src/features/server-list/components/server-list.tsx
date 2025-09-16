@@ -23,6 +23,7 @@ import {
   SortDesc,
   Users,
   Code,
+  RefreshCcw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -147,6 +148,8 @@ export function ServerList({ className }: { className?: string }) {
     data: servers,
     isLoading,
     error,
+    refetch,
+    isRefetching,
   } = useQuery({
     queryKey: ["servers"],
     queryFn: () => fetchServers(),
@@ -263,6 +266,17 @@ export function ServerList({ className }: { className?: string }) {
         <CardDescription>
           {`List of servers publicly available via the Master Server`}
         </CardDescription>
+        <div className="flex flex-row gap-2 items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+          >
+            <RefreshCcw className="w-4 h-4" />
+            {isRefetching ? "Refreshing..." : "Refresh"}
+          </Button>
+        </div>
 
         {/* Filter and Search Controls */}
         <Accordion
@@ -412,7 +426,7 @@ export function ServerList({ className }: { className?: string }) {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-2 max-h-72 overflow-y-auto bg-accent/20 p-2 rounded-lg">
-        {isLoading && (
+        {(isLoading || isRefetching) && (
           <div className="flex flex-row gap-2 items-center justify-center">
             <Loader2 className="min-w-4 min-h-4 max-w-4 max-h-4 text-white animate-spin" />
             <p className="text-sm text-white/80">Loading...</p>

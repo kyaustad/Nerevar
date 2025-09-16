@@ -9,6 +9,8 @@ use std::time::Instant;
 use tauri::Emitter;
 use zip::ZipArchive;
 
+mod server_settings;
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 enum Mode {
@@ -73,7 +75,6 @@ pub fn run() {
             set_tes3mp_server_config,
             get_tes3mp_server_settings,
             set_tes3mp_server_settings,
-            run_tes3mp_server,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -1270,108 +1271,63 @@ struct ServerSettings {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ConfigSettings {
-    #[serde(rename = "gameMode")]
     game_mode: String,
-    #[serde(rename = "loginTime")]
     login_time: i32,
-    #[serde(rename = "maxClientsPerIP")]
     max_clients_per_ip: i32,
     difficulty: i32,
-    #[serde(rename = "gameSettings")]
     game_settings: Vec<GameSetting>,
-
-    #[serde(rename = "defaultTimeTable")]
+    vr_settings: Vec<VrSetting>,
     default_time_table: DefaultTimeTable,
-
-    #[serde(rename = "passTimeWhenEmpty")]
+    world_startup_scripts: Vec<String>,
+    player_startup_scripts: Vec<String>,
     pass_time_when_empty: bool,
-    #[serde(rename = "nightStartHour")]
     night_start_hour: i32,
-    #[serde(rename = "nightEndHour")]
     night_end_hour: i32,
-    #[serde(rename = "allowConsole")]
     allow_console: bool,
-    #[serde(rename = "allowBedRest")]
     allow_bed_rest: bool,
-    #[serde(rename = "allowWildernessRest")]
     allow_wilderness_rest: bool,
-    #[serde(rename = "allowWait")]
     allow_wait: bool,
-    #[serde(rename = "shareJournal")]
     share_journal: bool,
-    #[serde(rename = "shareFactionRanks")]
     share_faction_ranks: bool,
-    #[serde(rename = "shareFactionExpulsion")]
     share_faction_expulsion: bool,
-    #[serde(rename = "shareFactionReputation")]
     share_faction_reputation: bool,
-    #[serde(rename = "shareTopics")]
     share_topics: bool,
-    #[serde(rename = "shareBounty")]
     share_bounty: bool,
-    #[serde(rename = "shareReputation")]
     share_reputation: bool,
-    #[serde(rename = "shareMapExploration")]
     share_map_exploration: bool,
-    #[serde(rename = "shareVideos")]
     share_videos: bool,
-    #[serde(rename = "useInstancedSpawn")]
     use_instanced_spawn: bool,
-
-    #[serde(rename = "respawnAtImperialShrine")]
+    instanced_spawn: SpawnLocation,
+    noninstanced_spawn: SpawnLocation,
+    default_respawn: RespawnLocation,
     respawn_at_imperial_shrine: bool,
-    #[serde(rename = "respawnAtTribunalTemple")]
     respawn_at_tribunal_temple: bool,
-
-    #[serde(rename = "maxAttributeValue")]
+    forbidden_cells: Vec<String>,
     max_attribute_value: i32,
-    #[serde(rename = "maxSpeedValue")]
     max_speed_value: i32,
-    #[serde(rename = "maxSkillValue")]
     max_skill_value: i32,
-    #[serde(rename = "maxAcrobaticsValue")]
     max_acrobatics_value: i32,
-    #[serde(rename = "ignoreModifierWithMaxSkill")]
     ignore_modifier_with_max_skill: bool,
-
-    #[serde(rename = "playersRespawn")]
+    banned_equipment_items: Vec<String>,
     players_respawn: bool,
-    #[serde(rename = "deathTime")]
     death_time: i32,
-    #[serde(rename = "deathPenaltyJailDays")]
     death_penalty_jail_days: i32,
-    #[serde(rename = "bountyResetOnDeath")]
     bounty_reset_on_death: bool,
-    #[serde(rename = "bountyDeathPenalty")]
     bounty_death_penalty: bool,
-    #[serde(rename = "allowSuicideCommand")]
     allow_suicide_command: bool,
-    #[serde(rename = "allowFixmeCommand")]
     allow_fixme_command: bool,
-    #[serde(rename = "fixmeInterval")]
     fixme_interval: i32,
-    #[serde(rename = "rankColors")]
     rank_colors: RankColors,
-    #[serde(rename = "pingDifferenceRequiredForAuthority")]
     ping_difference_required_for_authority: i32,
-    #[serde(rename = "enforcedLogLevel")]
     enforced_log_level: i32,
-    #[serde(rename = "physicsFramerate")]
     physics_framerate: i32,
-    #[serde(rename = "allowOnContainerForUnloadedCells")]
     allow_on_container_for_unloaded_cells: bool,
-    #[serde(rename = "enablePlayerCollision")]
     enable_player_collision: bool,
-    #[serde(rename = "enableActorCollision")]
     enable_actor_collision: bool,
-    #[serde(rename = "enablePlacedObjectCollision")]
     enable_placed_object_collision: bool,
-
-    #[serde(rename = "useActorCollisionForPlacedObjects")]
+    enforced_collision_ref_ids: Vec<String>,
     use_actor_collision_for_placed_objects: bool,
-    #[serde(rename = "maximumObjectScale")]
     maximum_object_scale: f64,
-    #[serde(rename = "enforceDataFiles")]
     enforce_data_files: bool,
 }
 
@@ -1393,17 +1349,13 @@ struct DefaultTimeTable {
     month: i32,
     day: i32,
     hour: i32,
-    #[serde(rename = "daysPassed")]
     days_passed: i32,
-    #[serde(rename = "dayTimeScale")]
     day_time_scale: i32,
-    #[serde(rename = "nightTimeScale")]
     night_time_scale: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SpawnLocation {
-    #[serde(rename = "cellDescription")]
     cell_description: String,
     position: Vec<f64>,
     rotation: Vec<f64>,
@@ -1412,7 +1364,6 @@ struct SpawnLocation {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct RespawnLocation {
-    #[serde(rename = "cellDescription")]
     cell_description: String,
     position: Vec<f64>,
     rotation: Vec<f64>,
@@ -1420,406 +1371,455 @@ struct RespawnLocation {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct RankColors {
-    #[serde(rename = "serverOwner")]
     server_owner: String,
     admin: String,
     moderator: String,
 }
 
 fn parse_server_settings(content: &str) -> Result<ServerSettings, String> {
-    // BRUTE FORCE: Search for the specific fields we need
-    let max_attribute_value = if let Some(start) = content.find("config.maxAttributeValue = ") {
-        let line_start = start + "config.maxAttributeValue = ".len();
-        let line_end = content[line_start..]
-            .find('\n')
-            .unwrap_or(content.len() - line_start);
-        let value_str = content[line_start..line_start + line_end].trim();
-        value_str.parse::<i32>().unwrap_or(0)
-    } else {
-        0
-    };
-
-    let players_respawn = if let Some(start) = content.find("config.playersRespawn = ") {
-        let line_start = start + "config.playersRespawn = ".len();
-        let line_end = content[line_start..]
-            .find('\n')
-            .unwrap_or(content.len() - line_start);
-        let value_str = content[line_start..line_start + line_end].trim();
-        value_str == "true"
-    } else {
-        false
-    };
-
     let mut config = ConfigSettings {
-        game_mode: String::new(),
-        login_time: 0,
-        max_clients_per_ip: 0,
+        game_mode: "Default".to_string(),
+        login_time: 60,
+        max_clients_per_ip: 3,
         difficulty: 0,
         game_settings: Vec::new(),
+        vr_settings: Vec::new(),
         default_time_table: DefaultTimeTable {
-            year: 0,
-            month: 0,
-            day: 0,
-            hour: 0,
-            days_passed: 0,
-            day_time_scale: 0,
-            night_time_scale: 0,
+            year: 427,
+            month: 7,
+            day: 16,
+            hour: 9,
+            days_passed: 1,
+            day_time_scale: 30,
+            night_time_scale: 40,
         },
+        world_startup_scripts: Vec::new(),
+        player_startup_scripts: Vec::new(),
         pass_time_when_empty: false,
-        night_start_hour: 0,
-        night_end_hour: 0,
+        night_start_hour: 20,
+        night_end_hour: 6,
         allow_console: false,
-        allow_bed_rest: false,
-        allow_wilderness_rest: false,
-        allow_wait: false,
-        share_journal: false,
-        share_faction_ranks: false,
+        allow_bed_rest: true,
+        allow_wilderness_rest: true,
+        allow_wait: true,
+        share_journal: true,
+        share_faction_ranks: true,
         share_faction_expulsion: false,
-        share_faction_reputation: false,
-        share_topics: false,
+        share_faction_reputation: true,
+        share_topics: true,
         share_bounty: false,
-        share_reputation: false,
+        share_reputation: true,
         share_map_exploration: false,
-        share_videos: false,
-        use_instanced_spawn: false,
-        respawn_at_imperial_shrine: false,
-        respawn_at_tribunal_temple: false,
-        max_attribute_value,
-        max_speed_value: 0,
-        max_skill_value: 0,
-        max_acrobatics_value: 0,
+        share_videos: true,
+        use_instanced_spawn: true,
+        instanced_spawn: SpawnLocation {
+            cell_description: "Seyda Neen, Census and Excise Office".to_string(),
+            position: vec![1130.3388671875, -387.14947509766, 193.0],
+            rotation: vec![0.09375, 1.5078122615814],
+            text: "Multiplayer skips several minutes of the game's introduction and places you at the first quest giver.".to_string(),
+        },
+        noninstanced_spawn: SpawnLocation {
+            cell_description: "-3, -2".to_string(),
+            position: vec![-23894.0, -15079.0, 505.0],
+            rotation: vec![0.0, 1.2],
+            text: "Multiplayer skips over the original character generation.".to_string(),
+        },
+        default_respawn: RespawnLocation {
+            cell_description: "Balmora, Temple".to_string(),
+            position: vec![4700.5673828125, 3874.7416992188, 14758.990234375],
+            rotation: vec![0.25314688682556, 1.570611000061],
+        },
+        respawn_at_imperial_shrine: true,
+        respawn_at_tribunal_temple: true,
+        forbidden_cells: Vec::new(),
+        max_attribute_value: 200,
+        max_speed_value: 365,
+        max_skill_value: 200,
+        max_acrobatics_value: 1200,
         ignore_modifier_with_max_skill: false,
-        players_respawn,
-        death_time: 0,
-        death_penalty_jail_days: 0,
+        banned_equipment_items: Vec::new(),
+        players_respawn: true,
+        death_time: 5,
+        death_penalty_jail_days: 5,
         bounty_reset_on_death: false,
         bounty_death_penalty: false,
-        allow_suicide_command: false,
-        allow_fixme_command: false,
-        fixme_interval: 0,
+        allow_suicide_command: true,
+        allow_fixme_command: true,
+        fixme_interval: 30,
         rank_colors: RankColors {
-            server_owner: String::new(),
-            admin: String::new(),
-            moderator: String::new(),
+            server_owner: "Orange".to_string(),
+            admin: "Red".to_string(),
+            moderator: "Green".to_string(),
         },
-        ping_difference_required_for_authority: 0,
-        enforced_log_level: 0,
-        physics_framerate: 0,
+        ping_difference_required_for_authority: 40,
+        enforced_log_level: -1,
+        physics_framerate: 60,
         allow_on_container_for_unloaded_cells: false,
-        enable_player_collision: false,
-        enable_actor_collision: false,
+        enable_player_collision: true,
+        enable_actor_collision: true,
         enable_placed_object_collision: false,
+        enforced_collision_ref_ids: Vec::new(),
         use_actor_collision_for_placed_objects: false,
-        maximum_object_scale: 0.0,
+        maximum_object_scale: 2.0,
         enforce_data_files: false,
     };
 
-    let lines: Vec<&str> = content.lines().collect();
-    let mut i = 0;
+    let mut lines = content.lines().peekable();
+    let mut in_table = false;
+    let mut current_table_name = String::new();
+    let mut table_content = Vec::new();
 
-    while i < lines.len() {
-        let line = lines[i].trim();
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim();
 
         // Skip empty lines and comments
-        if line.is_empty() || line.starts_with("--") {
-            i += 1;
+        if trimmed.is_empty() || trimmed.starts_with("--") {
             continue;
         }
 
-        // Parse simple key-value pairs
-        if let Some(eq_pos) = line.find('=') {
-            let key = line[..eq_pos].trim();
-            let value = line[eq_pos + 1..].trim();
+        // Handle table definitions
+        if trimmed.starts_with("config.") && trimmed.contains("=") {
+            if let Some(eq_pos) = trimmed.find('=') {
+                let key = trimmed[6..eq_pos].trim(); // Skip "config."
+                let value = trimmed[eq_pos + 1..].trim();
 
-            match key {
-                "config.gameMode" => {
-                    config.game_mode = parse_string_value(value)?;
-                }
-                "config.loginTime" => {
-                    config.login_time = parse_number_value(value)?;
-                }
-                "config.maxClientsPerIP" => {
-                    config.max_clients_per_ip = parse_number_value(value)?;
-                }
-                "config.difficulty" => {
-                    config.difficulty = parse_number_value(value)?;
-                }
-                "config.passTimeWhenEmpty" => {
-                    config.pass_time_when_empty = parse_bool_value(value)?;
-                }
-                "config.nightStartHour" => {
-                    config.night_start_hour = parse_number_value(value)?;
-                }
-                "config.nightEndHour" => {
-                    config.night_end_hour = parse_number_value(value)?;
-                }
-                "config.allowConsole" => {
-                    config.allow_console = parse_bool_value(value)?;
-                }
-                "config.allowBedRest" => {
-                    config.allow_bed_rest = parse_bool_value(value)?;
-                }
-                "config.allowWildernessRest" => {
-                    config.allow_wilderness_rest = parse_bool_value(value)?;
-                }
-                "config.allowWait" => {
-                    config.allow_wait = parse_bool_value(value)?;
-                }
-                "config.shareJournal" => {
-                    config.share_journal = parse_bool_value(value)?;
-                }
-                "config.shareFactionRanks" => {
-                    config.share_faction_ranks = parse_bool_value(value)?;
-                }
-                "config.shareFactionExpulsion" => {
-                    config.share_faction_expulsion = parse_bool_value(value)?;
-                }
-                "config.shareFactionReputation" => {
-                    config.share_faction_reputation = parse_bool_value(value)?;
-                }
-                "config.shareTopics" => {
-                    config.share_topics = parse_bool_value(value)?;
-                }
-                "config.shareBounty" => {
-                    config.share_bounty = parse_bool_value(value)?;
-                }
-                "config.shareReputation" => {
-                    config.share_reputation = parse_bool_value(value)?;
-                }
-                "config.shareMapExploration" => {
-                    config.share_map_exploration = parse_bool_value(value)?;
-                }
-                "config.shareVideos" => {
-                    config.share_videos = parse_bool_value(value)?;
-                }
-                "config.useInstancedSpawn" => {
-                    config.use_instanced_spawn = parse_bool_value(value)?;
-                }
-                "config.respawnAtImperialShrine" => {
-                    config.respawn_at_imperial_shrine = parse_bool_value(value)?;
-                }
-                "config.respawnAtTribunalTemple" => {
-                    config.respawn_at_tribunal_temple = parse_bool_value(value)?;
-                }
-                "config.maxAttributeValue" => {
-                    config.max_attribute_value = parse_number_value(value)?;
-                }
-                "config.maxSpeedValue" => {
-                    config.max_speed_value = parse_number_value(value)?;
-                }
-                "config.maxSkillValue" => {
-                    config.max_skill_value = parse_number_value(value)?;
-                }
-                "config.maxAcrobaticsValue" => {
-                    config.max_acrobatics_value = parse_number_value(value)?;
-                }
-                "config.ignoreModifierWithMaxSkill" => {
-                    config.ignore_modifier_with_max_skill = parse_bool_value(value)?;
-                }
-                "config.playersRespawn" => {
-                    config.players_respawn = parse_bool_value(value)?;
-                }
-                "config.deathTime" => {
-                    config.death_time = parse_number_value(value)?;
-                }
-                "config.deathPenaltyJailDays" => {
-                    config.death_penalty_jail_days = parse_number_value(value)?;
-                }
-                "config.bountyResetOnDeath" => {
-                    config.bounty_reset_on_death = parse_bool_value(value)?;
-                }
-                "config.bountyDeathPenalty" => {
-                    config.bounty_death_penalty = parse_bool_value(value)?;
-                }
-                "config.allowSuicideCommand" => {
-                    config.allow_suicide_command = parse_bool_value(value)?;
-                }
-                "config.allowFixmeCommand" => {
-                    config.allow_fixme_command = parse_bool_value(value)?;
-                }
-                "config.fixmeInterval" => {
-                    config.fixme_interval = parse_number_value(value)?;
-                }
-                "config.pingDifferenceRequiredForAuthority" => {
-                    config.ping_difference_required_for_authority = parse_number_value(value)?;
-                }
-                "config.enforcedLogLevel" => {
-                    config.enforced_log_level = parse_number_value(value)?;
-                }
-                "config.physicsFramerate" => {
-                    config.physics_framerate = parse_number_value(value)?;
-                }
-                "config.allowOnContainerForUnloadedCells" => {
-                    config.allow_on_container_for_unloaded_cells = parse_bool_value(value)?;
-                }
-                "config.enablePlayerCollision" => {
-                    config.enable_player_collision = parse_bool_value(value)?;
-                }
-                "config.enableActorCollision" => {
-                    config.enable_actor_collision = parse_bool_value(value)?;
-                }
-                "config.enablePlacedObjectCollision" => {
-                    config.enable_placed_object_collision = parse_bool_value(value)?;
-                }
-                "config.useActorCollisionForPlacedObjects" => {
-                    config.use_actor_collision_for_placed_objects = parse_bool_value(value)?;
-                }
-                "config.maximumObjectScale" => {
-                    config.maximum_object_scale = parse_float_value(value)?;
-                }
-                "config.enforceDataFiles" => {
-                    config.enforce_data_files = parse_bool_value(value)?;
-                }
-                "config.gameSettings" => {
-                    // Parse game settings table
-                    if let Some(table_content) = parse_table_content(&lines, &mut i)? {
-                        config.game_settings = parse_game_settings_table(&table_content)?;
+                // Check if this starts a table
+                if value.starts_with('{') {
+                    in_table = true;
+                    current_table_name = key.to_string();
+                    table_content.clear();
+
+                    // Handle single-line tables
+                    if value.ends_with('}') {
+                        parse_table_content(
+                            &value[1..value.len() - 1],
+                            &current_table_name,
+                            &mut config,
+                        )?;
+                        in_table = false;
+                    } else {
+                        // Multi-line table
+                        let content = value[1..].trim();
+                        if !content.is_empty() {
+                            table_content.push(content);
+                        }
                     }
-                }
-
-                "config.defaultTimeTable" => {
-                    // Parse default time table
-                    if let Some(table_content) = parse_table_content(&lines, &mut i)? {
-                        config.default_time_table = parse_time_table(&table_content)?;
-                    }
-                }
-
-                _ => {
-                    // Unknown key, skip
+                } else {
+                    // Simple key-value pair
+                    parse_simple_value(key, value, &mut config)?;
                 }
             }
+        } else if in_table {
+            // We're inside a table
+            if trimmed == "}" {
+                // End of table
+                let content = table_content.join(" ");
+                parse_table_content(&content, &current_table_name, &mut config)?;
+                in_table = false;
+                table_content.clear();
+            } else {
+                // Add line to table content
+                table_content.push(trimmed);
+            }
         }
-
-        i += 1;
     }
 
     Ok(ServerSettings { config })
 }
 
-// Helper functions for parsing Lua values
-fn parse_string_value(value: &str) -> Result<String, String> {
-    let trimmed = value.trim();
-    if trimmed.starts_with('"') && trimmed.ends_with('"') {
-        Ok(trimmed[1..trimmed.len() - 1].to_string())
-    } else if trimmed.starts_with('"') && trimmed.contains("..") {
-        // Handle concatenated strings like "text" .. "more text"
-        let mut result = String::new();
-        let parts: Vec<&str> = trimmed.split("..").collect();
-
-        for part in parts {
-            let part = part.trim();
-            if part.starts_with('"') && part.ends_with('"') {
-                result.push_str(&part[1..part.len() - 1]);
-            } else if part.starts_with('"') {
-                result.push_str(&part[1..]);
-            } else if part.ends_with('"') {
-                result.push_str(&part[..part.len() - 1]);
-            }
+fn parse_simple_value(key: &str, value: &str, config: &mut ConfigSettings) -> Result<(), String> {
+    match key {
+        "gameMode" => {
+            config.game_mode = parse_string_value(value)?;
         }
-        Ok(result)
+        "loginTime" => {
+            config.login_time = parse_number_value(value)?;
+        }
+        "maxClientsPerIP" => {
+            config.max_clients_per_ip = parse_number_value(value)?;
+        }
+        "difficulty" => {
+            config.difficulty = parse_number_value(value)?;
+        }
+        "passTimeWhenEmpty" => {
+            config.pass_time_when_empty = parse_bool_value(value)?;
+        }
+        "nightStartHour" => {
+            config.night_start_hour = parse_number_value(value)?;
+        }
+        "nightEndHour" => {
+            config.night_end_hour = parse_number_value(value)?;
+        }
+        "allowConsole" => {
+            config.allow_console = parse_bool_value(value)?;
+        }
+        "allowBedRest" => {
+            config.allow_bed_rest = parse_bool_value(value)?;
+        }
+        "allowWildernessRest" => {
+            config.allow_wilderness_rest = parse_bool_value(value)?;
+        }
+        "allowWait" => {
+            config.allow_wait = parse_bool_value(value)?;
+        }
+        "shareJournal" => {
+            config.share_journal = parse_bool_value(value)?;
+        }
+        "shareFactionRanks" => {
+            config.share_faction_ranks = parse_bool_value(value)?;
+        }
+        "shareFactionExpulsion" => {
+            config.share_faction_expulsion = parse_bool_value(value)?;
+        }
+        "shareFactionReputation" => {
+            config.share_faction_reputation = parse_bool_value(value)?;
+        }
+        "shareTopics" => {
+            config.share_topics = parse_bool_value(value)?;
+        }
+        "shareBounty" => {
+            config.share_bounty = parse_bool_value(value)?;
+        }
+        "shareReputation" => {
+            config.share_reputation = parse_bool_value(value)?;
+        }
+        "shareMapExploration" => {
+            config.share_map_exploration = parse_bool_value(value)?;
+        }
+        "shareVideos" => {
+            config.share_videos = parse_bool_value(value)?;
+        }
+        "useInstancedSpawn" => {
+            config.use_instanced_spawn = parse_bool_value(value)?;
+        }
+        "respawnAtImperialShrine" => {
+            config.respawn_at_imperial_shrine = parse_bool_value(value)?;
+        }
+        "respawnAtTribunalTemple" => {
+            config.respawn_at_tribunal_temple = parse_bool_value(value)?;
+        }
+        "maxAttributeValue" => {
+            config.max_attribute_value = parse_number_value(value)?;
+        }
+        "maxSpeedValue" => {
+            config.max_speed_value = parse_number_value(value)?;
+        }
+        "maxSkillValue" => {
+            config.max_skill_value = parse_number_value(value)?;
+        }
+        "maxAcrobaticsValue" => {
+            config.max_acrobatics_value = parse_number_value(value)?;
+        }
+        "ignoreModifierWithMaxSkill" => {
+            config.ignore_modifier_with_max_skill = parse_bool_value(value)?;
+        }
+        "playersRespawn" => {
+            config.players_respawn = parse_bool_value(value)?;
+        }
+        "deathTime" => {
+            config.death_time = parse_number_value(value)?;
+        }
+        "deathPenaltyJailDays" => {
+            config.death_penalty_jail_days = parse_number_value(value)?;
+        }
+        "bountyResetOnDeath" => {
+            config.bounty_reset_on_death = parse_bool_value(value)?;
+        }
+        "bountyDeathPenalty" => {
+            config.bounty_death_penalty = parse_bool_value(value)?;
+        }
+        "allowSuicideCommand" => {
+            config.allow_suicide_command = parse_bool_value(value)?;
+        }
+        "allowFixmeCommand" => {
+            config.allow_fixme_command = parse_bool_value(value)?;
+        }
+        "fixmeInterval" => {
+            config.fixme_interval = parse_number_value(value)?;
+        }
+        "pingDifferenceRequiredForAuthority" => {
+            config.ping_difference_required_for_authority = parse_number_value(value)?;
+        }
+        "enforcedLogLevel" => {
+            config.enforced_log_level = parse_number_value(value)?;
+        }
+        "physicsFramerate" => {
+            config.physics_framerate = parse_number_value(value)?;
+        }
+        "allowOnContainerForUnloadedCells" => {
+            config.allow_on_container_for_unloaded_cells = parse_bool_value(value)?;
+        }
+        "enablePlayerCollision" => {
+            config.enable_player_collision = parse_bool_value(value)?;
+        }
+        "enableActorCollision" => {
+            config.enable_actor_collision = parse_bool_value(value)?;
+        }
+        "enablePlacedObjectCollision" => {
+            config.enable_placed_object_collision = parse_bool_value(value)?;
+        }
+        "useActorCollisionForPlacedObjects" => {
+            config.use_actor_collision_for_placed_objects = parse_bool_value(value)?;
+        }
+        "maximumObjectScale" => {
+            config.maximum_object_scale = parse_float_value(value)?;
+        }
+        "enforceDataFiles" => {
+            config.enforce_data_files = parse_bool_value(value)?;
+        }
+        _ => {
+            // Unknown key, skip
+        }
+    }
+    Ok(())
+}
+
+fn parse_table_content(
+    content: &str,
+    table_name: &str,
+    config: &mut ConfigSettings,
+) -> Result<(), String> {
+    match table_name {
+        "gameSettings" => {
+            config.game_settings = parse_game_settings_table(content)?;
+        }
+        "vrSettings" => {
+            config.vr_settings = parse_vr_settings_table(content)?;
+        }
+        "defaultTimeTable" => {
+            config.default_time_table = parse_time_table(content)?;
+        }
+        "worldStartupScripts" => {
+            config.world_startup_scripts = parse_string_array(content)?;
+        }
+        "playerStartupScripts" => {
+            config.player_startup_scripts = parse_string_array(content)?;
+        }
+        "forbiddenCells" => {
+            config.forbidden_cells = parse_string_array(content)?;
+        }
+        "bannedEquipmentItems" => {
+            config.banned_equipment_items = parse_string_array(content)?;
+        }
+        "enforcedCollisionRefIds" => {
+            config.enforced_collision_ref_ids = parse_string_array(content)?;
+        }
+        "instancedSpawn" => {
+            config.instanced_spawn = parse_spawn_location(content)?;
+        }
+        "noninstancedSpawn" => {
+            config.noninstanced_spawn = parse_spawn_location(content)?;
+        }
+        "defaultRespawn" => {
+            config.default_respawn = parse_respawn_location(content)?;
+        }
+        "rankColors" => {
+            config.rank_colors = parse_rank_colors(content)?;
+        }
+        _ => {
+            // Unknown table, skip
+        }
+    }
+    Ok(())
+}
+
+fn parse_string_value(value: &str) -> Result<String, String> {
+    if value.starts_with('"') && value.ends_with('"') {
+        Ok(value[1..value.len() - 1].to_string())
     } else {
-        Err(format!("Invalid string value: {}", value))
+        Ok(value.to_string())
     }
 }
 
 fn parse_number_value(value: &str) -> Result<i32, String> {
-    let trimmed = value.trim();
-    trimmed
+    value
         .parse::<i32>()
-        .map_err(|e| format!("Invalid number value '{}': {}", value, e))
+        .map_err(|e| format!("Failed to parse number '{}': {}", value, e))
 }
 
 fn parse_float_value(value: &str) -> Result<f64, String> {
-    let trimmed = value.trim();
-    trimmed
+    value
         .parse::<f64>()
-        .map_err(|e| format!("Invalid float value '{}': {}", value, e))
+        .map_err(|e| format!("Failed to parse float '{}': {}", value, e))
 }
 
 fn parse_bool_value(value: &str) -> Result<bool, String> {
-    let trimmed = value.trim();
-    match trimmed {
+    match value {
         "true" => Ok(true),
         "false" => Ok(false),
         _ => Err(format!("Invalid boolean value: {}", value)),
     }
 }
 
-fn parse_table_content(lines: &[&str], index: &mut usize) -> Result<Option<String>, String> {
-    let mut content = String::new();
-    let mut brace_count = 0;
-    let mut found_opening = false;
-
-    while *index < lines.len() {
-        let line = lines[*index].trim();
-
-        if line.is_empty() || line.starts_with("--") {
-            *index += 1;
-            continue;
-        }
-
-        if !found_opening {
-            if line.contains('{') {
-                found_opening = true;
-                let brace_start = line.find('{').unwrap();
-                content.push_str(&line[brace_start..]);
-                brace_count += line[brace_start..].matches('{').count() as i32;
-                brace_count -= line[brace_start..].matches('}').count() as i32;
-            }
-        } else {
-            content.push_str(line);
-            content.push('\n');
-            brace_count += line.matches('{').count() as i32;
-            brace_count -= line.matches('}').count() as i32;
-
-            if brace_count <= 0 {
-                break;
-            }
-        }
-
-        *index += 1;
-    }
-
-    if found_opening {
-        Ok(Some(content))
-    } else {
-        Ok(None)
-    }
-}
-
 fn parse_game_settings_table(content: &str) -> Result<Vec<GameSetting>, String> {
     let mut settings = Vec::new();
-    let lines: Vec<&str> = content.lines().collect();
+    let entries: Vec<&str> = content.split('}').collect();
 
-    for line in lines {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with("--") || trimmed == "{" || trimmed == "}" {
+    for entry in entries {
+        let entry = entry.trim();
+        if entry.is_empty() || !entry.starts_with('{') {
             continue;
         }
 
-        // Parse lines like: { name = "best attack", value = false },
-        if trimmed.starts_with('{') && trimmed.ends_with('}') {
-            let inner = &trimmed[1..trimmed.len() - 1];
-            let mut name = String::new();
-            let mut value = serde_json::Value::Bool(false);
+        let content = entry[1..].trim();
+        let parts: Vec<&str> = content.split(',').collect();
 
-            for part in inner.split(',') {
-                let part = part.trim();
-                if part.starts_with("name =") {
-                    let name_part = &part[6..].trim();
-                    name = parse_string_value(name_part)?;
-                } else if part.starts_with("value =") {
-                    let value_part = &part[7..].trim();
-                    if *value_part == "true" || *value_part == "false" {
-                        value = serde_json::Value::Bool(parse_bool_value(value_part)?);
+        if parts.len() >= 2 {
+            let name_part = parts[0].trim();
+            let value_part = parts[1].trim();
+
+            if name_part.starts_with("name = \"") && name_part.ends_with('"') {
+                let name = name_part[8..name_part.len() - 1].to_string();
+
+                let value = if value_part.starts_with("value = ") {
+                    let val_str = &value_part[8..];
+                    if val_str == "true" {
+                        serde_json::Value::Bool(true)
+                    } else if val_str == "false" {
+                        serde_json::Value::Bool(false)
+                    } else if let Ok(num) = val_str.parse::<i32>() {
+                        serde_json::Value::Number(num.into())
                     } else {
-                        value = serde_json::Value::Number(parse_number_value(value_part)?.into());
+                        serde_json::Value::String(val_str.to_string())
+                    }
+                } else {
+                    serde_json::Value::String(value_part.to_string())
+                };
+
+                settings.push(GameSetting { name, value });
+            }
+        }
+    }
+
+    Ok(settings)
+}
+
+fn parse_vr_settings_table(content: &str) -> Result<Vec<VrSetting>, String> {
+    let mut settings = Vec::new();
+    let entries: Vec<&str> = content.split('}').collect();
+
+    for entry in entries {
+        let entry = entry.trim();
+        if entry.is_empty() || !entry.starts_with('{') {
+            continue;
+        }
+
+        let content = entry[1..].trim();
+        let parts: Vec<&str> = content.split(',').collect();
+
+        if parts.len() >= 2 {
+            let name_part = parts[0].trim();
+            let value_part = parts[1].trim();
+
+            if name_part.starts_with("name = \"") && name_part.ends_with('"') {
+                let name = name_part[8..name_part.len() - 1].to_string();
+
+                if value_part.starts_with("value = ") {
+                    let val_str = &value_part[8..];
+                    if let Ok(value) = val_str.parse::<f64>() {
+                        settings.push(VrSetting { name, value });
                     }
                 }
-            }
-
-            if !name.is_empty() {
-                settings.push(GameSetting { name, value });
             }
         }
     }
@@ -1829,26 +1829,21 @@ fn parse_game_settings_table(content: &str) -> Result<Vec<GameSetting>, String> 
 
 fn parse_time_table(content: &str) -> Result<DefaultTimeTable, String> {
     let mut time_table = DefaultTimeTable {
-        year: 0,
-        month: 0,
-        day: 0,
-        hour: 0,
-        days_passed: 0,
-        day_time_scale: 0,
-        night_time_scale: 0,
+        year: 427,
+        month: 7,
+        day: 16,
+        hour: 9,
+        days_passed: 1,
+        day_time_scale: 30,
+        night_time_scale: 40,
     };
 
-    let lines: Vec<&str> = content.lines().collect();
-
-    for line in lines {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with("--") || trimmed == "{" || trimmed == "}" {
-            continue;
-        }
-
-        if let Some(eq_pos) = trimmed.find('=') {
-            let key = trimmed[..eq_pos].trim();
-            let value = trimmed[eq_pos + 1..].trim().trim_end_matches(',');
+    let parts: Vec<&str> = content.split(',').collect();
+    for part in parts {
+        let part = part.trim();
+        if let Some(eq_pos) = part.find('=') {
+            let key = part[..eq_pos].trim();
+            let value = part[eq_pos + 1..].trim();
 
             match key {
                 "year" => time_table.year = parse_number_value(value)?,
@@ -1866,394 +1861,113 @@ fn parse_time_table(content: &str) -> Result<DefaultTimeTable, String> {
     Ok(time_table)
 }
 
-fn update_server_settings_values(
-    content: &str,
-    config: &serde_json::Value,
-) -> Result<String, String> {
-    let mut lines: Vec<String> = content.lines().map(|line| line.to_string()).collect();
-    let mut updated = false;
+fn parse_string_array(content: &str) -> Result<Vec<String>, String> {
+    let mut items = Vec::new();
+    let content = content.trim();
 
-    for line in lines.iter_mut() {
-        let trimmed = line.trim();
+    if content.starts_with('{') && content.ends_with('}') {
+        let inner = &content[1..content.len() - 1];
+        let parts: Vec<&str> = inner.split(',').collect();
 
-        // Skip empty lines and comments
-        if trimmed.is_empty() || trimmed.starts_with("--") {
-            continue;
+        for part in parts {
+            let part = part.trim();
+            if part.starts_with('"') && part.ends_with('"') {
+                items.push(part[1..part.len() - 1].to_string());
+            } else {
+                items.push(part.to_string());
+            }
         }
+    }
 
-        // Check if this line contains a key-value pair
-        if let Some(eq_pos) = trimmed.find('=') {
-            let key = trimmed[..eq_pos].trim();
+    Ok(items)
+}
 
-            // Update values based on the key
+fn parse_spawn_location(content: &str) -> Result<SpawnLocation, String> {
+    let mut spawn = SpawnLocation {
+        cell_description: String::new(),
+        position: Vec::new(),
+        rotation: Vec::new(),
+        text: String::new(),
+    };
+
+    let parts: Vec<&str> = content.split(',').collect();
+    for part in parts {
+        let part = part.trim();
+        if let Some(eq_pos) = part.find('=') {
+            let key = part[..eq_pos].trim();
+            let value = part[eq_pos + 1..].trim();
+
             match key {
-                "config.gameMode" => {
-                    if let Some(value) = config.get("gameMode") {
-                        if let Some(game_mode) = value.as_str() {
-                            *line = format!("config.gameMode = \"{}\"", game_mode);
-                            updated = true;
-                        }
+                "cellDescription" => {
+                    spawn.cell_description = parse_string_value(value)?;
+                }
+                "position" => {
+                    if value.starts_with('{') && value.ends_with('}') {
+                        let inner = &value[1..value.len() - 1];
+                        let coords: Vec<&str> = inner.split(',').collect();
+                        spawn.position = coords
+                            .iter()
+                            .map(|s| s.trim().parse::<f64>().unwrap_or(0.0))
+                            .collect();
                     }
                 }
-                "config.loginTime" => {
-                    if let Some(value) = config.get("loginTime") {
-                        if let Some(login_time) = value.as_i64() {
-                            *line = format!("config.loginTime = {}", login_time);
-                            updated = true;
-                        }
+                "rotation" => {
+                    if value.starts_with('{') && value.ends_with('}') {
+                        let inner = &value[1..value.len() - 1];
+                        let coords: Vec<&str> = inner.split(',').collect();
+                        spawn.rotation = coords
+                            .iter()
+                            .map(|s| s.trim().parse::<f64>().unwrap_or(0.0))
+                            .collect();
                     }
                 }
-                "config.maxClientsPerIP" => {
-                    if let Some(value) = config.get("maxClientsPerIP") {
-                        if let Some(max_clients) = value.as_i64() {
-                            *line = format!("config.maxClientsPerIP = {}", max_clients);
-                            updated = true;
-                        }
+                "text" => {
+                    spawn.text = parse_string_value(value)?;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Ok(spawn)
+}
+
+fn parse_respawn_location(content: &str) -> Result<RespawnLocation, String> {
+    let mut respawn = RespawnLocation {
+        cell_description: String::new(),
+        position: Vec::new(),
+        rotation: Vec::new(),
+    };
+
+    let parts: Vec<&str> = content.split(',').collect();
+    for part in parts {
+        let part = part.trim();
+        if let Some(eq_pos) = part.find('=') {
+            let key = part[..eq_pos].trim();
+            let value = part[eq_pos + 1..].trim();
+
+            match key {
+                "cellDescription" => {
+                    respawn.cell_description = parse_string_value(value)?;
+                }
+                "position" => {
+                    if value.starts_with('{') && value.ends_with('}') {
+                        let inner = &value[1..value.len() - 1];
+                        let coords: Vec<&str> = inner.split(',').collect();
+                        respawn.position = coords
+                            .iter()
+                            .map(|s| s.trim().parse::<f64>().unwrap_or(0.0))
+                            .collect();
                     }
                 }
-                "config.difficulty" => {
-                    if let Some(value) = config.get("difficulty") {
-                        if let Some(difficulty) = value.as_i64() {
-                            *line = format!("config.difficulty = {}", difficulty);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.passTimeWhenEmpty" => {
-                    if let Some(value) = config.get("passTimeWhenEmpty") {
-                        if let Some(pass_time) = value.as_bool() {
-                            *line = format!("config.passTimeWhenEmpty = {}", pass_time);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.nightStartHour" => {
-                    if let Some(value) = config.get("nightStartHour") {
-                        if let Some(hour) = value.as_i64() {
-                            *line = format!("config.nightStartHour = {}", hour);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.nightEndHour" => {
-                    if let Some(value) = config.get("nightEndHour") {
-                        if let Some(hour) = value.as_i64() {
-                            *line = format!("config.nightEndHour = {}", hour);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.allowConsole" => {
-                    if let Some(value) = config.get("allowConsole") {
-                        if let Some(allow) = value.as_bool() {
-                            *line = format!("config.allowConsole = {}", allow);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.allowBedRest" => {
-                    if let Some(value) = config.get("allowBedRest") {
-                        if let Some(allow) = value.as_bool() {
-                            *line = format!("config.allowBedRest = {}", allow);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.allowWildernessRest" => {
-                    if let Some(value) = config.get("allowWildernessRest") {
-                        if let Some(allow) = value.as_bool() {
-                            *line = format!("config.allowWildernessRest = {}", allow);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.allowWait" => {
-                    if let Some(value) = config.get("allowWait") {
-                        if let Some(allow) = value.as_bool() {
-                            *line = format!("config.allowWait = {}", allow);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.shareJournal" => {
-                    if let Some(value) = config.get("shareJournal") {
-                        if let Some(share) = value.as_bool() {
-                            *line = format!("config.shareJournal = {}", share);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.shareFactionRanks" => {
-                    if let Some(value) = config.get("shareFactionRanks") {
-                        if let Some(share) = value.as_bool() {
-                            *line = format!("config.shareFactionRanks = {}", share);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.shareFactionExpulsion" => {
-                    if let Some(value) = config.get("shareFactionExpulsion") {
-                        if let Some(share) = value.as_bool() {
-                            *line = format!("config.shareFactionExpulsion = {}", share);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.shareFactionReputation" => {
-                    if let Some(value) = config.get("shareFactionReputation") {
-                        if let Some(share) = value.as_bool() {
-                            *line = format!("config.shareFactionReputation = {}", share);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.shareTopics" => {
-                    if let Some(value) = config.get("shareTopics") {
-                        if let Some(share) = value.as_bool() {
-                            *line = format!("config.shareTopics = {}", share);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.shareBounty" => {
-                    if let Some(value) = config.get("shareBounty") {
-                        if let Some(share) = value.as_bool() {
-                            *line = format!("config.shareBounty = {}", share);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.shareReputation" => {
-                    if let Some(value) = config.get("shareReputation") {
-                        if let Some(share) = value.as_bool() {
-                            *line = format!("config.shareReputation = {}", share);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.shareMapExploration" => {
-                    if let Some(value) = config.get("shareMapExploration") {
-                        if let Some(share) = value.as_bool() {
-                            *line = format!("config.shareMapExploration = {}", share);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.shareVideos" => {
-                    if let Some(value) = config.get("shareVideos") {
-                        if let Some(share) = value.as_bool() {
-                            *line = format!("config.shareVideos = {}", share);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.useInstancedSpawn" => {
-                    if let Some(value) = config.get("useInstancedSpawn") {
-                        if let Some(use_instanced) = value.as_bool() {
-                            *line = format!("config.useInstancedSpawn = {}", use_instanced);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.respawnAtImperialShrine" => {
-                    if let Some(value) = config.get("respawnAtImperialShrine") {
-                        if let Some(respawn) = value.as_bool() {
-                            *line = format!("config.respawnAtImperialShrine = {}", respawn);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.respawnAtTribunalTemple" => {
-                    if let Some(value) = config.get("respawnAtTribunalTemple") {
-                        if let Some(respawn) = value.as_bool() {
-                            *line = format!("config.respawnAtTribunalTemple = {}", respawn);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.maxAttributeValue" => {
-                    if let Some(value) = config.get("maxAttributeValue") {
-                        if let Some(max_val) = value.as_i64() {
-                            *line = format!("config.maxAttributeValue = {}", max_val);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.maxSpeedValue" => {
-                    if let Some(value) = config.get("maxSpeedValue") {
-                        if let Some(max_val) = value.as_i64() {
-                            *line = format!("config.maxSpeedValue = {}", max_val);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.maxSkillValue" => {
-                    if let Some(value) = config.get("maxSkillValue") {
-                        if let Some(max_val) = value.as_i64() {
-                            *line = format!("config.maxSkillValue = {}", max_val);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.maxAcrobaticsValue" => {
-                    if let Some(value) = config.get("maxAcrobaticsValue") {
-                        if let Some(max_val) = value.as_i64() {
-                            *line = format!("config.maxAcrobaticsValue = {}", max_val);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.ignoreModifierWithMaxSkill" => {
-                    if let Some(value) = config.get("ignoreModifierWithMaxSkill") {
-                        if let Some(ignore) = value.as_bool() {
-                            *line = format!("config.ignoreModifierWithMaxSkill = {}", ignore);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.playersRespawn" => {
-                    if let Some(value) = config.get("playersRespawn") {
-                        if let Some(respawn) = value.as_bool() {
-                            *line = format!("config.playersRespawn = {}", respawn);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.deathTime" => {
-                    if let Some(value) = config.get("deathTime") {
-                        if let Some(time) = value.as_i64() {
-                            *line = format!("config.deathTime = {}", time);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.deathPenaltyJailDays" => {
-                    if let Some(value) = config.get("deathPenaltyJailDays") {
-                        if let Some(days) = value.as_i64() {
-                            *line = format!("config.deathPenaltyJailDays = {}", days);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.bountyResetOnDeath" => {
-                    if let Some(value) = config.get("bountyResetOnDeath") {
-                        if let Some(reset) = value.as_bool() {
-                            *line = format!("config.bountyResetOnDeath = {}", reset);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.bountyDeathPenalty" => {
-                    if let Some(value) = config.get("bountyDeathPenalty") {
-                        if let Some(penalty) = value.as_bool() {
-                            *line = format!("config.bountyDeathPenalty = {}", penalty);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.allowSuicideCommand" => {
-                    if let Some(value) = config.get("allowSuicideCommand") {
-                        if let Some(allow) = value.as_bool() {
-                            *line = format!("config.allowSuicideCommand = {}", allow);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.allowFixmeCommand" => {
-                    if let Some(value) = config.get("allowFixmeCommand") {
-                        if let Some(allow) = value.as_bool() {
-                            *line = format!("config.allowFixmeCommand = {}", allow);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.fixmeInterval" => {
-                    if let Some(value) = config.get("fixmeInterval") {
-                        if let Some(interval) = value.as_i64() {
-                            *line = format!("config.fixmeInterval = {}", interval);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.pingDifferenceRequiredForAuthority" => {
-                    if let Some(value) = config.get("pingDifferenceRequiredForAuthority") {
-                        if let Some(diff) = value.as_i64() {
-                            *line = format!("config.pingDifferenceRequiredForAuthority = {}", diff);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.enforcedLogLevel" => {
-                    if let Some(value) = config.get("enforcedLogLevel") {
-                        if let Some(level) = value.as_i64() {
-                            *line = format!("config.enforcedLogLevel = {}", level);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.physicsFramerate" => {
-                    if let Some(value) = config.get("physicsFramerate") {
-                        if let Some(framerate) = value.as_i64() {
-                            *line = format!("config.physicsFramerate = {}", framerate);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.allowOnContainerForUnloadedCells" => {
-                    if let Some(value) = config.get("allowOnContainerForUnloadedCells") {
-                        if let Some(allow) = value.as_bool() {
-                            *line = format!("config.allowOnContainerForUnloadedCells = {}", allow);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.enablePlayerCollision" => {
-                    if let Some(value) = config.get("enablePlayerCollision") {
-                        if let Some(enable) = value.as_bool() {
-                            *line = format!("config.enablePlayerCollision = {}", enable);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.enableActorCollision" => {
-                    if let Some(value) = config.get("enableActorCollision") {
-                        if let Some(enable) = value.as_bool() {
-                            *line = format!("config.enableActorCollision = {}", enable);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.enablePlacedObjectCollision" => {
-                    if let Some(value) = config.get("enablePlacedObjectCollision") {
-                        if let Some(enable) = value.as_bool() {
-                            *line = format!("config.enablePlacedObjectCollision = {}", enable);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.useActorCollisionForPlacedObjects" => {
-                    if let Some(value) = config.get("useActorCollisionForPlacedObjects") {
-                        if let Some(use_actor) = value.as_bool() {
-                            *line =
-                                format!("config.useActorCollisionForPlacedObjects = {}", use_actor);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.maximumObjectScale" => {
-                    if let Some(value) = config.get("maximumObjectScale") {
-                        if let Some(scale) = value.as_f64() {
-                            *line = format!("config.maximumObjectScale = {}", scale);
-                            updated = true;
-                        }
-                    }
-                }
-                "config.enforceDataFiles" => {
-                    if let Some(value) = config.get("enforceDataFiles") {
-                        if let Some(enforce) = value.as_bool() {
-                            *line = format!("config.enforceDataFiles = {}", enforce);
-                            updated = true;
-                        }
+                "rotation" => {
+                    if value.starts_with('{') && value.ends_with('}') {
+                        let inner = &value[1..value.len() - 1];
+                        let coords: Vec<&str> = inner.split(',').collect();
+                        respawn.rotation = coords
+                            .iter()
+                            .map(|s| s.trim().parse::<f64>().unwrap_or(0.0))
+                            .collect();
                     }
                 }
                 _ => {}
@@ -2261,11 +1975,685 @@ fn update_server_settings_values(
         }
     }
 
-    if !updated {
-        return Err("No matching configuration keys found to update".to_string());
+    Ok(respawn)
+}
+
+fn parse_rank_colors(content: &str) -> Result<RankColors, String> {
+    let mut colors = RankColors {
+        server_owner: "Orange".to_string(),
+        admin: "Red".to_string(),
+        moderator: "Green".to_string(),
+    };
+
+    let parts: Vec<&str> = content.split(',').collect();
+    for part in parts {
+        let part = part.trim();
+        if let Some(eq_pos) = part.find('=') {
+            let key = part[..eq_pos].trim();
+            let value = part[eq_pos + 1..].trim();
+
+            match key {
+                "serverOwner" => {
+                    colors.server_owner = parse_string_value(value)?;
+                }
+                "admin" => {
+                    colors.admin = parse_string_value(value)?;
+                }
+                "moderator" => {
+                    colors.moderator = parse_string_value(value)?;
+                }
+                _ => {}
+            }
+        }
     }
 
-    Ok(lines.join("\n"))
+    Ok(colors)
+}
+
+fn write_server_settings(settings: &ServerSettings) -> Result<String, String> {
+    let mut content = String::new();
+
+    // Header
+    content.push_str("config = {}\n\n");
+
+    // Basic settings
+    content.push_str(&format!(
+        "-- The path used by the server for its data folder\n"
+    ));
+    content.push_str(&format!("config.dataPath = tes3mp.GetDataPath()\n\n"));
+
+    content.push_str(&format!(
+        "-- The game mode displayed for this server in the server browser\n"
+    ));
+    content.push_str(&format!(
+        "config.gameMode = \"{}\"\n\n",
+        settings.config.game_mode
+    ));
+
+    content.push_str(&format!("-- Time to login, in seconds\n"));
+    content.push_str(&format!(
+        "config.loginTime = {}\n\n",
+        settings.config.login_time
+    ));
+
+    content.push_str(&format!(
+        "-- How many clients are allowed to connect from the same IP address\n"
+    ));
+    content.push_str(&format!(
+        "config.maxClientsPerIP = {}\n\n",
+        settings.config.max_clients_per_ip
+    ));
+
+    content.push_str(&format!("-- The difficulty level used by default\n"));
+    content.push_str(&format!("-- Note: In OpenMW, the difficulty slider goes between -100 and 100, with 0 as the default,\n"));
+    content.push_str(&format!(
+        "--       though you can use any integer value here\n"
+    ));
+    content.push_str(&format!(
+        "config.difficulty = {}\n\n",
+        settings.config.difficulty
+    ));
+
+    // Game settings table
+    content.push_str(&format!("-- The game settings to enforce for players\n"));
+    content.push_str(&format!("-- Note 1: Anything from OpenMW's game settings can be added here, which means anything listed\n"));
+    content.push_str(&format!("--         on https://openmw.readthedocs.io/en/latest/reference/modding/settings/game.html\n"));
+    content.push_str(&format!("-- Note 2: Some settings, such as \"difficulty\" and \"actors processing range\", cannot be\n"));
+    content.push_str(&format!("--         changed from here\n"));
+    content.push_str(&format!("config.gameSettings = {{\n"));
+    for setting in &settings.config.game_settings {
+        let value_str = match &setting.value {
+            serde_json::Value::Bool(b) => b.to_string(),
+            serde_json::Value::Number(n) => n.to_string(),
+            serde_json::Value::String(s) => format!("\"{}\"", s),
+            _ => "nil".to_string(),
+        };
+        content.push_str(&format!(
+            "    {{ name = \"{}\", value = {} }},\n",
+            setting.name, value_str
+        ));
+    }
+    content.push_str(&format!("}}\n\n"));
+
+    // VR settings table
+    content.push_str(&format!("-- The VR settings to enforce for players\n"));
+    content.push_str(&format!("config.vrSettings = {{\n"));
+    for setting in &settings.config.vr_settings {
+        content.push_str(&format!(
+            "    {{ name = \"{}\", value = {} }},\n",
+            setting.name, setting.value
+        ));
+    }
+    content.push_str(&format!("}}\n\n"));
+
+    // Default time table
+    content.push_str(&format!(
+        "-- The world time used for a newly created world\n"
+    ));
+    content.push_str(&format!(
+        "config.defaultTimeTable = {{ year = {}, month = {}, day = {}, hour = {},\n",
+        settings.config.default_time_table.year,
+        settings.config.default_time_table.month,
+        settings.config.default_time_table.day,
+        settings.config.default_time_table.hour
+    ));
+    content.push_str(&format!(
+        "    daysPassed = {}, dayTimeScale = {}, nightTimeScale = {} }}\n\n",
+        settings.config.default_time_table.days_passed,
+        settings.config.default_time_table.day_time_scale,
+        settings.config.default_time_table.night_time_scale
+    ));
+
+    // World startup scripts
+    content.push_str(&format!(
+        "-- Which ingame startup scripts should be run via the /runstartup command\n"
+    ));
+    content.push_str(&format!(
+        "-- Note: These affect the world and must not be run for every player who joins.\n"
+    ));
+    content.push_str(&format!("config.worldStartupScripts = {{"));
+    for (i, script) in settings.config.world_startup_scripts.iter().enumerate() {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("\"{}\"", script));
+    }
+    content.push_str(&format!("}}\n\n"));
+
+    // Player startup scripts
+    content.push_str(&format!(
+        "-- Which ingame startup scripts should be run on every player who joins\n"
+    ));
+    content.push_str(&format!("-- Note: These pertain to game mechanics that wouldn't work otherwise, such as vampirism checks\n"));
+    content.push_str(&format!("config.playerStartupScripts = {{"));
+    for (i, script) in settings.config.player_startup_scripts.iter().enumerate() {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("\"{}\"", script));
+    }
+    content.push_str(&format!("}}\n\n"));
+
+    // Boolean settings
+    content.push_str(&format!("-- Whether the world time should continue passing when there are no players on the server\n"));
+    content.push_str(&format!(
+        "config.passTimeWhenEmpty = {}\n\n",
+        settings.config.pass_time_when_empty
+    ));
+
+    content.push_str(&format!("-- The hours at which night is regarded as starting and ending, used to pass time using a\n"));
+    content.push_str(&format!("-- different timescale when it's night\n"));
+    content.push_str(&format!(
+        "config.nightStartHour = {}\n",
+        settings.config.night_start_hour
+    ));
+    content.push_str(&format!(
+        "config.nightEndHour = {}\n\n",
+        settings.config.night_end_hour
+    ));
+
+    content.push_str(&format!(
+        "-- Whether players should be allowed to use the ingame tilde (~) console by default\n"
+    ));
+    content.push_str(&format!(
+        "config.allowConsole = {}\n\n",
+        settings.config.allow_console
+    ));
+
+    content.push_str(&format!(
+        "-- Whether players should be allowed to rest in bed by default\n"
+    ));
+    content.push_str(&format!(
+        "config.allowBedRest = {}\n\n",
+        settings.config.allow_bed_rest
+    ));
+
+    content.push_str(&format!(
+        "-- Whether players should be allowed to rest in the wilderness by default\n"
+    ));
+    content.push_str(&format!(
+        "config.allowWildernessRest = {}\n\n",
+        settings.config.allow_wilderness_rest
+    ));
+
+    content.push_str(&format!(
+        "-- Whether players should be allowed to wait by default\n"
+    ));
+    content.push_str(&format!(
+        "config.allowWait = {}\n\n",
+        settings.config.allow_wait
+    ));
+
+    content.push_str(&format!(
+        "-- Whether journal entries should be shared across the players on the server or not\n"
+    ));
+    content.push_str(&format!(
+        "config.shareJournal = {}\n\n",
+        settings.config.share_journal
+    ));
+
+    content.push_str(&format!(
+        "-- Whether faction ranks should be shared across the players on the server or not\n"
+    ));
+    content.push_str(&format!(
+        "config.shareFactionRanks = {}\n\n",
+        settings.config.share_faction_ranks
+    ));
+
+    content.push_str(&format!(
+        "-- Whether faction expulsion should be shared across the players on the server or not\n"
+    ));
+    content.push_str(&format!(
+        "config.shareFactionExpulsion = {}\n\n",
+        settings.config.share_faction_expulsion
+    ));
+
+    content.push_str(&format!(
+        "-- Whether faction reputation should be shared across the players on the server or not\n"
+    ));
+    content.push_str(&format!(
+        "config.shareFactionReputation = {}\n\n",
+        settings.config.share_faction_reputation
+    ));
+
+    content.push_str(&format!(
+        "-- Whether dialogue topics should be shared across the players on the server or not\n"
+    ));
+    content.push_str(&format!(
+        "config.shareTopics = {}\n\n",
+        settings.config.share_topics
+    ));
+
+    content.push_str(&format!(
+        "-- Whether crime bounties should be shared across players on the server or not\n"
+    ));
+    content.push_str(&format!(
+        "config.shareBounty = {}\n\n",
+        settings.config.share_bounty
+    ));
+
+    content.push_str(&format!(
+        "-- Whether reputation should be shared across players on the server or not\n"
+    ));
+    content.push_str(&format!(
+        "config.shareReputation = {}\n\n",
+        settings.config.share_reputation
+    ));
+
+    content.push_str(&format!(
+        "-- Whether map exploration should be shared across players on the server or not\n"
+    ));
+    content.push_str(&format!(
+        "config.shareMapExploration = {}\n\n",
+        settings.config.share_map_exploration
+    ));
+
+    content.push_str(&format!("-- Whether ingame videos should be played for other players when triggered by one player\n"));
+    content.push_str(&format!(
+        "config.shareVideos = {}\n\n",
+        settings.config.share_videos
+    ));
+
+    content.push_str(&format!(
+        "-- Whether the instanced spawn should be used instead of the noninstanced one\n"
+    ));
+    content.push_str(&format!(
+        "config.useInstancedSpawn = {}\n\n",
+        settings.config.use_instanced_spawn
+    ));
+
+    // Spawn locations
+    content.push_str(&format!("-- Where players will be spawned if an instanced spawn is desired, with a different clean copy of\n"));
+    content.push_str(&format!("-- this cell existing for each player\n"));
+    content.push_str(&format!(
+        "-- Warning: Only interior cells can be instanced\n"
+    ));
+    content.push_str(&format!("config.instancedSpawn = {{\n"));
+    content.push_str(&format!(
+        "    cellDescription = \"{}\",\n",
+        settings.config.instanced_spawn.cell_description
+    ));
+    content.push_str(&format!("    position = {{"));
+    for (i, pos) in settings.config.instanced_spawn.position.iter().enumerate() {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("{}", pos));
+    }
+    content.push_str(&format!("}},\n"));
+    content.push_str(&format!("    rotation = {{"));
+    for (i, rot) in settings.config.instanced_spawn.rotation.iter().enumerate() {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("{}", rot));
+    }
+    content.push_str(&format!("}},\n"));
+    content.push_str(&format!(
+        "    text = \"{}\"\n",
+        settings.config.instanced_spawn.text
+    ));
+    content.push_str(&format!("}}\n\n"));
+
+    content.push_str(&format!(
+        "-- Where players will be spawned if an instanced spawn is not desired\n"
+    ));
+    content.push_str(&format!("config.noninstancedSpawn = {{\n"));
+    content.push_str(&format!(
+        "    cellDescription = \"{}\",\n",
+        settings.config.noninstanced_spawn.cell_description
+    ));
+    content.push_str(&format!("    position = {{"));
+    for (i, pos) in settings
+        .config
+        .noninstanced_spawn
+        .position
+        .iter()
+        .enumerate()
+    {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("{}", pos));
+    }
+    content.push_str(&format!("}},\n"));
+    content.push_str(&format!("    rotation = {{"));
+    for (i, rot) in settings
+        .config
+        .noninstanced_spawn
+        .rotation
+        .iter()
+        .enumerate()
+    {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("{}", rot));
+    }
+    content.push_str(&format!("}},\n"));
+    content.push_str(&format!(
+        "    text = \"{}\"\n",
+        settings.config.noninstanced_spawn.text
+    ));
+    content.push_str(&format!("}}\n\n"));
+
+    // Default respawn
+    content.push_str(&format!("-- The location that players respawn at, unless overridden below by other respawn options\n"));
+    content.push_str(&format!("config.defaultRespawn = {{\n"));
+    content.push_str(&format!(
+        "    cellDescription = \"{}\",\n",
+        settings.config.default_respawn.cell_description
+    ));
+    content.push_str(&format!("    position = {{"));
+    for (i, pos) in settings.config.default_respawn.position.iter().enumerate() {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("{}", pos));
+    }
+    content.push_str(&format!("}},\n"));
+    content.push_str(&format!("    rotation = {{"));
+    for (i, rot) in settings.config.default_respawn.rotation.iter().enumerate() {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("{}", rot));
+    }
+    content.push_str(&format!("}}\n"));
+    content.push_str(&format!("}}\n\n"));
+
+    // Respawn options
+    content.push_str(&format!(
+        "-- Whether the default respawn location should be ignored in favor of respawning the\n"
+    ));
+    content.push_str(&format!("-- player at the nearest Imperial shrine\n"));
+    content.push_str(&format!(
+        "config.respawnAtImperialShrine = {}\n\n",
+        settings.config.respawn_at_imperial_shrine
+    ));
+
+    content.push_str(&format!(
+        "-- Whether the default respawn location should be ignored in favor of respawning the\n"
+    ));
+    content.push_str(&format!("-- player at the nearest Tribunal temple\n"));
+    content.push_str(&format!(
+        "-- Note: When both this and the Imperial shrine option are enabled, there is a 50%\n"
+    ));
+    content.push_str(&format!(
+        "--       chance of the player being respawned at either\n"
+    ));
+    content.push_str(&format!(
+        "config.respawnAtTribunalTemple = {}\n\n",
+        settings.config.respawn_at_tribunal_temple
+    ));
+
+    // Forbidden cells
+    content.push_str(&format!(
+        "-- The cells that players are forbidden from entering, with any attempt to enter them\n"
+    ));
+    content.push_str(&format!(
+        "-- transporting them to the last location in their previous cell\n"
+    ));
+    content.push_str(&format!("config.forbiddenCells = {{"));
+    for (i, cell) in settings.config.forbidden_cells.iter().enumerate() {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("\"{}\"", cell));
+    }
+    content.push_str(&format!("}}\n\n"));
+
+    // Max values
+    content.push_str(&format!(
+        "-- The maximum value that any attribute except Speed is allowed to have\n"
+    ));
+    content.push_str(&format!(
+        "config.maxAttributeValue = {}\n\n",
+        settings.config.max_attribute_value
+    ));
+
+    content.push_str(&format!(
+        "-- The maximum value that Speed is allowed to have\n"
+    ));
+    content.push_str(&format!(
+        "-- Note: Speed is given special treatment because of the Boots of Blinding Speed\n"
+    ));
+    content.push_str(&format!(
+        "config.maxSpeedValue = {}\n\n",
+        settings.config.max_speed_value
+    ));
+
+    content.push_str(&format!(
+        "-- The maximum value that any skill except Acrobatics is allowed to have\n"
+    ));
+    content.push_str(&format!(
+        "config.maxSkillValue = {}\n\n",
+        settings.config.max_skill_value
+    ));
+
+    content.push_str(&format!(
+        "-- The maximum value that Acrobatics is allowed to have\n"
+    ));
+    content.push_str(&format!(
+        "-- Note: Acrobatics is given special treatment because of the Scroll of Icarian Flight\n"
+    ));
+    content.push_str(&format!(
+        "config.maxAcrobaticsValue = {}\n\n",
+        settings.config.max_acrobatics_value
+    ));
+
+    content.push_str(&format!(
+        "-- Allow modifier values to bypass allowed skill values\n"
+    ));
+    content.push_str(&format!(
+        "config.ignoreModifierWithMaxSkill = {}\n\n",
+        settings.config.ignore_modifier_with_max_skill
+    ));
+
+    // Banned equipment
+    content.push_str(&format!(
+        "-- The refIds of items that players are not allowed to equip for balancing reasons\n"
+    ));
+    content.push_str(&format!("config.bannedEquipmentItems = {{"));
+    for (i, item) in settings.config.banned_equipment_items.iter().enumerate() {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("\"{}\"", item));
+    }
+    content.push_str(&format!("}}\n\n"));
+
+    // Death and respawn settings
+    content.push_str(&format!("-- Whether players should respawn when dying\n"));
+    content.push_str(&format!(
+        "config.playersRespawn = {}\n\n",
+        settings.config.players_respawn
+    ));
+
+    content.push_str(&format!(
+        "-- Time to stay dead before being respawned, in seconds\n"
+    ));
+    content.push_str(&format!(
+        "config.deathTime = {}\n\n",
+        settings.config.death_time
+    ));
+
+    content.push_str(&format!(
+        "-- The number of days spent in jail as a penalty for dying, when respawning\n"
+    ));
+    content.push_str(&format!(
+        "config.deathPenaltyJailDays = {}\n\n",
+        settings.config.death_penalty_jail_days
+    ));
+
+    content.push_str(&format!(
+        "-- Whether players' bounties are reset to 0 after dying\n"
+    ));
+    content.push_str(&format!(
+        "config.bountyResetOnDeath = {}\n\n",
+        settings.config.bounty_reset_on_death
+    ));
+
+    content.push_str(&format!(
+        "-- Whether players spend time in jail proportional to their bounty after dying\n"
+    ));
+    content.push_str(&format!(
+        "-- Note: If deathPenaltyJailDays is also enabled, that penalty will be added to\n"
+    ));
+    content.push_str(&format!("--       this one\n"));
+    content.push_str(&format!(
+        "config.bountyDeathPenalty = {}\n\n",
+        settings.config.bounty_death_penalty
+    ));
+
+    content.push_str(&format!(
+        "-- Whether players should be allowed to use the /suicide command\n"
+    ));
+    content.push_str(&format!(
+        "config.allowSuicideCommand = {}\n\n",
+        settings.config.allow_suicide_command
+    ));
+
+    content.push_str(&format!(
+        "-- Whether players should be allowed to use the /fixme command\n"
+    ));
+    content.push_str(&format!(
+        "config.allowFixmeCommand = {}\n\n",
+        settings.config.allow_fixme_command
+    ));
+
+    content.push_str(&format!(
+        "-- How many seconds need to pass between uses of the /fixme command by a player\n"
+    ));
+    content.push_str(&format!(
+        "config.fixmeInterval = {}\n\n",
+        settings.config.fixme_interval
+    ));
+
+    // Rank colors
+    content.push_str(&format!(
+        "-- The colors used for different ranks on the server\n"
+    ));
+    content.push_str(&format!("config.rankColors = {{ serverOwner = color.{}, admin = color.{}, moderator = color.{} }}\n\n", 
+        settings.config.rank_colors.server_owner,
+        settings.config.rank_colors.admin,
+        settings.config.rank_colors.moderator));
+
+    // Authority and performance settings
+    content.push_str(&format!("-- What the difference in ping needs to be in favor of a new arrival to a cell or region\n"));
+    content.push_str(&format!("-- compared to that cell or region's current player authority for the new arrival to become\n"));
+    content.push_str(&format!("-- the authority there\n"));
+    content.push_str(&format!("-- Note: Setting this too low will lead to constant authority changes which cause more lag\n"));
+    content.push_str(&format!(
+        "config.pingDifferenceRequiredForAuthority = {}\n\n",
+        settings.config.ping_difference_required_for_authority
+    ));
+
+    content.push_str(&format!(
+        "-- The log level enforced on clients by default, determining how much debug information\n"
+    ));
+    content.push_str(&format!("-- is displayed in their debug window and logs\n"));
+    content.push_str(&format!(
+        "-- Note 1: Set this to -1 to allow clients to use whatever log level they have set in\n"
+    ));
+    content.push_str(&format!("--         their client settings\n"));
+    content.push_str(&format!(
+        "-- Note 2: If you set this to 0 or 1, clients will be able to read about the movements\n"
+    ));
+    content.push_str(&format!(
+        "--         and actions of other players that they would otherwise not know about,\n"
+    ));
+    content.push_str(&format!(
+        "--         while also incurring a framerate loss on highly populated servers\n"
+    ));
+    content.push_str(&format!(
+        "config.enforcedLogLevel = {}\n\n",
+        settings.config.enforced_log_level
+    ));
+
+    content.push_str(&format!("-- The physics framerate used by default\n"));
+    content.push_str(&format!(
+        "-- Note: In OpenMW, the physics framerate is 60 by default\n"
+    ));
+    content.push_str(&format!(
+        "config.physicsFramerate = {}\n\n",
+        settings.config.physics_framerate
+    ));
+
+    // Container and collision settings
+    content.push_str(&format!(
+        "-- Whether players are allowed to interact with containers located in unloaded cells.\n"
+    ));
+    content.push_str(&format!(
+        "config.allowOnContainerForUnloadedCells = {}\n\n",
+        settings.config.allow_on_container_for_unloaded_cells
+    ));
+
+    content.push_str(&format!(
+        "-- Whether players should collide with other actors\n"
+    ));
+    content.push_str(&format!(
+        "config.enablePlayerCollision = {}\n\n",
+        settings.config.enable_player_collision
+    ));
+
+    content.push_str(&format!(
+        "-- Whether actors should collide with other actors\n"
+    ));
+    content.push_str(&format!(
+        "config.enableActorCollision = {}\n\n",
+        settings.config.enable_actor_collision
+    ));
+
+    content.push_str(&format!(
+        "-- Whether placed objects should collide with actors\n"
+    ));
+    content.push_str(&format!(
+        "config.enablePlacedObjectCollision = {}\n\n",
+        settings.config.enable_placed_object_collision
+    ));
+
+    // Enforced collision ref IDs
+    content.push_str(&format!("-- Enforce collision for certain placed object refIds even when enablePlacedObjectCollision\n"));
+    content.push_str(&format!("-- is false\n"));
+    content.push_str(&format!("config.enforcedCollisionRefIds = {{"));
+    for (i, ref_id) in settings
+        .config
+        .enforced_collision_ref_ids
+        .iter()
+        .enumerate()
+    {
+        if i > 0 {
+            content.push_str(", ");
+        }
+        content.push_str(&format!("\"{}\"", ref_id));
+    }
+    content.push_str(&format!("}}\n\n"));
+
+    content.push_str(&format!("-- Whether placed object collision (when turned on) resembles actor collision, in that it\n"));
+    content.push_str(&format!(
+        "-- prevents players from standing on top of the placed objects without slipping\n"
+    ));
+    content.push_str(&format!(
+        "config.useActorCollisionForPlacedObjects = {}\n\n",
+        settings.config.use_actor_collision_for_placed_objects
+    ));
+
+    content.push_str(&format!(
+        "-- The maximum scale that objects are allowed to have\n"
+    ));
+    content.push_str(&format!(
+        "config.maximumObjectScale = {}\n\n",
+        settings.config.maximum_object_scale
+    ));
+
+    content.push_str(&format!("-- Whether data files should be enforced\n"));
+    content.push_str(&format!(
+        "config.enforceDataFiles = {}\n",
+        settings.config.enforce_data_files
+    ));
+
+    Ok(content)
 }
 
 fn update_server_config_values(
@@ -2523,7 +2911,7 @@ async fn get_tes3mp_server_settings() -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-async fn set_tes3mp_server_settings(config: serde_json::Value) -> Result<bool, String> {
+async fn set_tes3mp_server_settings(settings: serde_json::Value) -> Result<bool, String> {
     // Get the AppData directory for Nerevar
     let appdata_dir = get_appdata_dir()?;
 
@@ -2534,121 +2922,17 @@ async fn set_tes3mp_server_settings(config: serde_json::Value) -> Result<bool, S
         .join("scripts")
         .join("config.lua");
 
-    // Check if the config file exists
-    if !config_path.exists() {
-        return Err(format!(
-            "TES3MP server settings file not found at: {}",
-            config_path.display()
-        ));
-    }
+    // Parse the JSON settings into our struct
+    let server_settings: ServerSettings = serde_json::from_value(settings)
+        .map_err(|e| format!("Failed to parse settings JSON: {}", e))?;
 
-    // Read the existing config file
-    let config_content = fs::read_to_string(&config_path)
-        .map_err(|e| format!("Failed to read TES3MP server settings: {}", e))?;
+    // Generate the Lua config content
+    let config_content = write_server_settings(&server_settings)?;
 
-    // Parse and update the config surgically
-    let updated_content = update_server_settings_values(&config_content, &config)?;
-
-    // Write the updated config back to the file
-    fs::write(&config_path, updated_content)
-        .map_err(|e| format!("Failed to write updated TES3MP server settings: {}", e))?;
+    // Write the config file
+    fs::write(&config_path, config_content)
+        .map_err(|e| format!("Failed to write TES3MP server settings: {}", e))?;
 
     log::info!("TES3MP server settings saved successfully");
     Ok(true)
-}
-
-#[tauri::command]
-async fn run_tes3mp_server(app_handle: tauri::AppHandle) -> Result<String, String> {
-    log::info!("Running TES3MP server");
-
-    // Get the nerevar config to find the TES3MP installation path
-    let nerevar_config =
-        get_nerevar_config().map_err(|e| format!("Failed to get Nerevar config: {}", e))?;
-
-    let config = nerevar_config.ok_or("No Nerevar config found. Please install TES3MP first.")?;
-    let tes3mp_path = config.tes3mp_path;
-
-    // Construct the path to the TES3MP server executable
-    let server_path = Path::new(&tes3mp_path).join("tes3mp-server.exe");
-
-    // Check if the TES3MP server executable exists
-    if !server_path.exists() {
-        return Err(format!(
-            "TES3MP server not found at: {}",
-            server_path.display()
-        ));
-    }
-
-    log::info!("Running TES3MP server at: {}", server_path.display());
-
-    // Spawn the TES3MP server process in its own terminal window
-    // Use PowerShell to properly handle the start command with quotes
-    let mut child = std::process::Command::new("powershell.exe")
-        .args([
-            "-Command",
-            &format!(
-                "Start-Process -FilePath '{}' -WindowStyle Normal -PassThru | Wait-Process",
-                server_path.to_string_lossy()
-            ),
-        ])
-        .spawn()
-        .map_err(|e| format!("Failed to run TES3MP server in terminal: {}", e))?;
-
-    let pid = child.id();
-    log::info!(
-        "TES3MP server started successfully in terminal (PID: {})",
-        pid
-    );
-
-    // Send initial event that TES3MP server started
-    app_handle
-        .emit("tes3mp-server-started", &pid)
-        .map_err(|e| format!("Failed to emit TES3MP server started event: {}", e))?;
-
-    // Spawn a task to monitor the process
-    tokio::spawn(async move {
-        // Wait for the process to complete
-        match child.wait() {
-            Ok(status) => {
-                let event_data = serde_json::json!({
-                    "pid": pid,
-                    "success": status.success(),
-                    "exit_code": status.code(),
-                    "message": if status.success() {
-                        "TES3MP server completed successfully"
-                    } else {
-                        "TES3MP server exited with an error"
-                    }
-                });
-
-                log::info!(
-                    "TES3MP server (PID: {}) exited with status: {:?}",
-                    pid,
-                    status.code()
-                );
-
-                // Emit the completion event
-                if let Err(e) = app_handle.emit("tes3mp-server-exited", &event_data) {
-                    log::error!("Failed to emit TES3MP server exited event: {}", e);
-                }
-            }
-            Err(e) => {
-                let event_data = serde_json::json!({
-                    "pid": pid,
-                    "success": false,
-                    "exit_code": None::<i32>,
-                    "message": format!("Failed to wait for TES3MP server: {}", e)
-                });
-
-                log::error!("Failed to wait for TES3MP server (PID: {}): {}", pid, e);
-
-                // Emit the error event
-                if let Err(emit_err) = app_handle.emit("tes3mp-server-exited", &event_data) {
-                    log::error!("Failed to emit TES3MP server error event: {}", emit_err);
-                }
-            }
-        }
-    });
-
-    Ok(format!("TES3MP server started successfully (PID: {})", pid))
 }

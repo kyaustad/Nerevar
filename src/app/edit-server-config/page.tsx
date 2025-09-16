@@ -2,16 +2,17 @@
 
 import BackgroundEmbers from "@/components/custom/background-embers";
 
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { ServerSettingsForm } from "@/features/server-configuration/server-settings-form";
+import { ServerConfigurationForm } from "@/features/server-configuration/server-config-form";
 
-export default function EditServerSettingsPage() {
+export default function EditServerConfigPage() {
   const [particlesEnabled, setParticlesEnabled] = useState(true);
   const router = useRouter();
   return (
@@ -31,7 +32,9 @@ export default function EditServerSettingsPage() {
         className="flex flex-col items-center gap-4 w-full mb-8"
       >
         <div className="flex flex-col gap-1 items-center justify-center text-center">
-          <h1 className="text-5xl font-sovngarde-bold ">Server Settings</h1>
+          <h1 className="text-5xl font-sovngarde-bold ">
+            Server Configuration
+          </h1>
         </div>
         <Separator />
         <div className="absolute top-4 right-4 z-50 flex items-center justify-center gap-2">
@@ -60,7 +63,7 @@ export default function EditServerSettingsPage() {
           </Button>
         </div>
         <div className="flex flex-col gap-4 w-full h-full items-start">
-          <ServerSettingsForm />
+          <ServerConfigurationForm />
         </div>
       </motion.div>
     </BackgroundEmbers>

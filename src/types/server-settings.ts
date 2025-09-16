@@ -8,10 +8,6 @@ export type ServerSettings = {
       name: string;
       value: boolean;
     }[];
-    vrSettings: {
-      name: string;
-      value: number;
-    }[];
     defaultTimeTable: {
       year: number;
       month: number;
@@ -21,8 +17,6 @@ export type ServerSettings = {
       dayTimeScale: number;
       nightTimeScale: number;
     };
-    worldStartupScripts: string[];
-    playerStartupScripts: string[];
     passTimeWhenEmpty: boolean;
     nightStartHour: number;
     nightEndHour: number;
@@ -40,32 +34,13 @@ export type ServerSettings = {
     shareMapExploration: boolean;
     shareVideos: boolean;
     useInstancedSpawn: boolean;
-    instancedSpawn: {
-      cellDescription: string;
-      position: number[];
-      rotation: number[];
-      text: string;
-    };
-    noninstancedSpawn: {
-      cellDescription: string;
-      position: number[];
-      rotation: number[];
-      text: string;
-    };
-    defaultRespawn: {
-      cellDescription: string;
-      position: number[];
-      rotation: number[];
-    };
     respawnAtImperialShrine: boolean;
     respawnAtTribunalTemple: boolean;
-    forbiddenCells: string[];
     maxAttributeValue: number;
     maxSpeedValue: number;
     maxSkillValue: number;
     maxAcrobaticsValue: number;
     ignoreModifierWithMaxSkill: boolean;
-    bannedEquipmentItems: string[];
     playersRespawn: boolean;
     deathTime: number;
     deathPenaltyJailDays: number;
@@ -74,11 +49,6 @@ export type ServerSettings = {
     allowSuicideCommand: boolean;
     allowFixmeCommand: boolean;
     fixmeInterval: number;
-    rankColors: {
-      serverOwner: string;
-      admin: string;
-      moderator: string;
-    };
     pingDifferenceRequiredForAuthority: number;
     enforcedLogLevel: number;
     physicsFramerate: number;
@@ -86,7 +56,6 @@ export type ServerSettings = {
     enablePlayerCollision: boolean;
     enableActorCollision: boolean;
     enablePlacedObjectCollision: boolean;
-    enforcedCollisionRefIds: string[];
     useActorCollisionForPlacedObjects: boolean;
     maximumObjectScale: number;
     enforceDataFiles: boolean;
