@@ -8,6 +8,7 @@ use std::process::{Command, Stdio};
 use std::time::Instant;
 use tauri::Emitter;
 use zip::ZipArchive;
+use open;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
@@ -74,6 +75,8 @@ pub fn run() {
             get_tes3mp_server_settings,
             set_tes3mp_server_settings,
             run_tes3mp_server,
+            open_config_lua_in_explorer,
+            open_nerevar_appdata_dir_in_explorer,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -2651,4 +2654,41 @@ async fn run_tes3mp_server(app_handle: tauri::AppHandle) -> Result<String, Strin
     });
 
     Ok(format!("TES3MP server started successfully (PID: {})", pid))
+}
+
+#[tauri::command]
+async fn open_config_lua_in_explorer() -> Result<bool, String> {
+    // Get the AppData directory for Nerevar
+    let appdata_dir = get_appdata_dir()?;
+
+    // Construct the path to the TES3MP server config file
+    let config_path = appdata_dir
+        .join("TES3MP")
+        .join("server")
+        .join("scripts")
+        .join("config.lua");
+
+    // Check if the config file exists
+    if !config_path.exists() {
+        return Err(format!(
+            "TES3MP server settings file not found at: {}",
+            config_path.display()
+        ));
+    }
+
+    // Open the config file in the default file explorer
+    open::that(config_path).map_err(|e| format!("Failed to open config file: {}", e))?;
+
+    Ok(true)
+}
+
+#[tauri::command]
+async fn open_nerevar_appdata_dir_in_explorer() -> Result<bool, String> {
+    // Get the AppData directory for Nerevar
+    let appdata_dir = get_appdata_dir()?;
+
+    // Open the AppData directory in the default file explorer
+    open::that(appdata_dir).map_err(|e| format!("Failed to open AppData directory: {}", e))?;
+
+    Ok(true)
 }

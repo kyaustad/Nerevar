@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { SaveIcon, TrashIcon } from "lucide-react";
+import { FileIcon, SaveIcon, TrashIcon } from "lucide-react";
 import { toast } from "sonner";
 import { transformServerSettingsConfig } from "@/lib/utils";
 import { ServerSettings } from "@/types/server-settings";
@@ -39,7 +39,7 @@ const formSchema = z.object({
   gameSettings: z.array(
     z.object({
       name: z.string().min(1),
-      value: z.boolean(),
+      value: z.any(),
     })
   ),
 
@@ -100,6 +100,21 @@ const formSchema = z.object({
 });
 
 export function ServerSettingsForm() {
+  const DEFAULT_GAME_SETTINGS = [
+    { name: "best attack", value: false },
+    { name: "prevent merchant equipping", value: false },
+    { name: "enchanted weapons are magical", value: true },
+    { name: "rebalance soul gem values", value: false },
+    { name: "barter disposition change is permanent", value: false },
+    { name: "strength influences hand to hand", value: 0 },
+    { name: "use magic item animations", value: false },
+    { name: "normalise race speed", value: false },
+    { name: "uncapped damage fatigue", value: false },
+    { name: "NPCs avoid collisions", value: false },
+    { name: "swim upward correction", value: false },
+    { name: "trainers training skills based on base skill", value: true },
+    { name: "always allow stealing from knocked out actors", value: false },
+  ];
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -107,7 +122,7 @@ export function ServerSettingsForm() {
       loginTime: 1,
       maxClientsPerIP: 1,
       difficulty: 0,
-      gameSettings: [],
+      gameSettings: DEFAULT_GAME_SETTINGS,
 
       defaultTimeTable: {
         year: 0,
@@ -181,8 +196,17 @@ export function ServerSettingsForm() {
     //   },
     // });
 
+    // Merge server gameSettings with default settings to ensure all settings are present
+    const mergedGameSettings = DEFAULT_GAME_SETTINGS.map((defaultSetting) => {
+      const serverSetting = formattedConfig.gameSettings?.find(
+        (s: any) => s.name === defaultSetting.name
+      );
+      return serverSetting || defaultSetting;
+    });
+
     form.reset({
       ...formattedConfig,
+      gameSettings: mergedGameSettings,
     });
   };
   useEffect(() => {
@@ -1408,6 +1432,19 @@ export function ServerSettingsForm() {
                   </FormItem>
                 )}
               />
+            </div>
+            <div className="flex flex-col col-span-3 gap-2 w-full h-fit p-1 border border-border rounded-md">
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={async () => {
+                  await invoke("open_config_lua_in_explorer");
+                }}
+              >
+                <FileIcon className="w-4 h-4" />
+                <span>{`Open Config.lua`}</span>
+              </Button>
             </div>
           </div>
         </div>

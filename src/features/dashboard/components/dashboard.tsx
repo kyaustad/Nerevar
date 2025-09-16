@@ -17,9 +17,10 @@ import { useConfig } from "@/features/app-config/context/config-context";
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { RouterIcon, SquarePenIcon } from "lucide-react";
+import { FolderIcon, RouterIcon, SquarePenIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Tes3MPServerCard } from "@/features/launchers/tes3mp-server-card";
+import { invoke } from "@tauri-apps/api/core";
 
 export function Dashboard() {
   const { config, isLoading } = useConfig();
@@ -45,9 +46,19 @@ export function Dashboard() {
           }}
           className="flex flex-col items-center gap-4 w-full mb-8"
         >
-          <div className="flex flex-col gap-1 items-center justify-center text-center">
+          <div className="flex flex-col gap-2 items-center justify-center text-center">
             <h1 className="text-5xl font-sovngarde-bold ">Nerevar</h1>
             <CheckForAppUpdate className="" />
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                invoke("open_nerevar_appdata_dir_in_explorer");
+              }}
+            >
+              <FolderIcon className="w-4 h-4" />
+              <span>{`Open App Data`}</span>
+            </Button>
           </div>
           <Separator />
           <div className="absolute top-4 right-4 z-50 flex items-center justify-center gap-2">
@@ -89,7 +100,7 @@ export function Dashboard() {
             }}
           /> */}
           {/* mode selection */}
-          <div className="absolute top-4 left-4">
+          <div className="absolute top-4 left-4 flex flex-col gap-2 items-center justify-center">
             <ModeSwitcher onModeChanged={(mode) => setCurrentMode(mode)} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 h-full gap-4 justify-items-center w-full ">
