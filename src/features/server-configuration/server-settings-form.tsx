@@ -15,20 +15,13 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Tes3MPServerConfig } from "@/types/server-cfg";
 import { invoke } from "@tauri-apps/api/core";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Switch } from "@/components/ui/switch";
 import { FileIcon, SaveIcon, TrashIcon } from "lucide-react";
 import { toast } from "sonner";
 import { transformServerSettingsConfig } from "@/lib/utils";
-import { ServerSettings } from "@/types/server-settings";
+import { ServerSettings, DefaultServerSettings } from "@/types/server-settings";
 import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
@@ -36,21 +29,6 @@ const formSchema = z.object({
   loginTime: z.number().min(1),
   maxClientsPerIP: z.number().min(1),
   difficulty: z.number().min(-100).max(100),
-  gameSettings: z.array(
-    z.object({
-      name: z.string().min(1),
-      value: z.any(),
-    })
-  ),
-
-  defaultTimeTable: z.object({
-    year: z.number().min(0),
-    month: z.number().min(1),
-    day: z.number().min(1),
-    hour: z.number().min(1),
-    daysPassed: z.number().min(1),
-  }),
-
   passTimeWhenEmpty: z.boolean(),
   nightStartHour: z.number().min(0),
   nightEndHour: z.number().min(0),
@@ -122,15 +100,6 @@ export function ServerSettingsForm() {
       loginTime: 1,
       maxClientsPerIP: 1,
       difficulty: 0,
-      gameSettings: DEFAULT_GAME_SETTINGS,
-
-      defaultTimeTable: {
-        year: 0,
-        month: 1,
-        day: 1,
-        hour: 1,
-        daysPassed: 1,
-      },
 
       passTimeWhenEmpty: false,
       nightStartHour: 0,
@@ -188,41 +157,14 @@ export function ServerSettingsForm() {
     const formattedConfig = transformServerSettingsConfig(config.config);
     console.log("Read Server Settings:", config);
     console.log("Formatted Config:", { config: formattedConfig });
-    //write back to file to test formatting
-    // await invoke("set_tes3mp_server_settings", {
-    //   config: {
-    //     ...formattedConfig,
-    //     gameMode: "Testis",
-    //   },
-    // });
-
-    // Merge server gameSettings with default settings to ensure all settings are present
-    const mergedGameSettings = DEFAULT_GAME_SETTINGS.map((defaultSetting) => {
-      const serverSetting = formattedConfig.gameSettings?.find(
-        (s: any) => s.name === defaultSetting.name
-      );
-      return serverSetting || defaultSetting;
-    });
 
     form.reset({
       ...formattedConfig,
-      gameSettings: mergedGameSettings,
     });
   };
   useEffect(() => {
     getServerSettings();
   }, []);
-
-  // Debug form validation
-  //   useEffect(() => {
-  //     console.log("Form errors:", form.formState.errors);
-  //     console.log("Form is valid:", form.formState.isValid);
-  //     console.log("Form is submitting:", form.formState.isSubmitting);
-  //   }, [
-  //     form.formState.errors,
-  //     form.formState.isValid,
-  //     form.formState.isSubmitting,
-  //   ]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     console.log("SUBMIT PRESSED");
@@ -230,8 +172,10 @@ export function ServerSettingsForm() {
     try {
       toast.promise(
         invoke("set_tes3mp_server_settings", {
-          config: {
-            ...values,
+          settings: {
+            config: {
+              ...values,
+            },
           },
         }),
         {
@@ -240,7 +184,10 @@ export function ServerSettingsForm() {
             await getServerSettings();
             return "Server config saved successfully";
           },
-          error: "Failed to save server config",
+          error: (error) => {
+            console.error("Failed to save server config:", error);
+            return "Failed to save server config";
+          },
         }
       );
       //   window.location.reload();
@@ -252,34 +199,19 @@ export function ServerSettingsForm() {
 
   function resetToDefaults() {
     try {
-      //   toast.promise(
-      //     invoke("set_tes3mp_server_config", {
-      //       config: {
-      //         general: {
-      //           localAddress: "0.0.0.0",
-      //           port: 25565,
-      //           maximumPlayers: 64,
-      //           logLevel: 1,
-      //           password: "",
-      //           hostname: "TES3MP Server",
-      //         },
-      //         masterServer: {
-      //           enabled: true,
-      //           address: "master.tes3mp.com",
-      //           port: 25561,
-      //           rate: 10000,
-      //         },
-      //       },
-      //     }),
-      //     {
-      //       loading: "Resetting to defaults...",
-      //       success: async (data) => {
-      //         await getServerSettings();
-      //         return "Server config reset to defaults";
-      //       },
-      //       error: "Failed to reset to defaults",
-      //     }
-      //   );
+      toast.promise(
+        invoke("set_tes3mp_server_settings", {
+          settings: DefaultServerSettings,
+        }),
+        {
+          loading: "Resetting to defaults...",
+          success: async (data) => {
+            await getServerSettings();
+            return "Server settings reset to defaults";
+          },
+          error: "Failed to reset to defaults",
+        }
+      );
     } catch (error) {
       console.error("Failed to reset to defaults:", error);
       toast.error("Failed to reset to defaults");
@@ -300,6 +232,16 @@ export function ServerSettingsForm() {
           >
             <SaveIcon className="w-4 h-4" />
             Save
+          </Button>
+          <Button
+            type="button"
+            className="w-full"
+            disabled={form.formState.isSubmitting}
+            onClick={resetToDefaults}
+            variant="destructive"
+          >
+            <TrashIcon className="w-4 h-4" />
+            Reset to Defaults
           </Button>
         </div>
         <div className="flex flex-row gap-4 w-full h-full place-items-start">
@@ -1433,6 +1375,24 @@ export function ServerSettingsForm() {
                 )}
               />
             </div>
+            {/* {form.watch("gameSettings").length > 0 && (
+              <div className="flex flex-col col-span-3 gap-2 w-full h-fit p-1 border border-border rounded-md">
+                {form.watch("gameSettings").map((setting: any) => (
+                  <div key={setting.name} className="flex justify-between">
+                    <span>
+                      {setting.name
+                        .split(" ")
+                        .map(
+                          (word: string) =>
+                            word.charAt(0).toUpperCase() + word.slice(1)
+                        )
+                        .join(" ")}
+                    </span>
+                    <span>{setting.value ? "True" : "False"}</span>
+                  </div>
+                ))}
+              </div>
+            )} */}
             <div className="flex flex-col col-span-3 gap-2 w-full h-fit p-1 border border-border rounded-md">
               <Button
                 type="button"

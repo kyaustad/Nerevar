@@ -34,7 +34,7 @@ const formSchema = z.object({
     port: z.number().min(1),
     maximum_players: z.number().min(1),
     hostname: z.string().min(1),
-    log_level: z.number().min(0).max(4),
+    log_level: z.string().min(1),
     password: z.optional(z.string()),
   }),
   plugins: z.object({
@@ -58,7 +58,7 @@ export function ServerConfigurationForm() {
         port: 0,
         maximum_players: 0,
         hostname: "",
-        log_level: 0,
+        log_level: "0",
         password: "",
       },
       plugins: {
@@ -85,7 +85,7 @@ export function ServerConfigurationForm() {
         port: config.general.port,
         maximum_players: config.general.maximum_players,
         hostname: config.general.hostname,
-        log_level: config.general.log_level,
+        log_level: config.general.log_level.toString(),
         password: config.general.password,
       },
       plugins: {
@@ -114,7 +114,7 @@ export function ServerConfigurationForm() {
               ...values.general,
               localAddress: values.general.local_address,
               maximumPlayers: values.general.maximum_players,
-              logLevel: values.general.log_level,
+              logLevel: Number(values.general.log_level),
             },
             masterServer: {
               ...values.master_server,
@@ -308,8 +308,8 @@ export function ServerConfigurationForm() {
                   </FormDescription>
                   <FormControl>
                     <Select
-                      onValueChange={(value) => field.onChange(Number(value))}
-                      defaultValue={field.value.toString()}
+                      onValueChange={(value) => field.onChange(value)}
+                      value={field.value}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a log level" />

@@ -32,6 +32,8 @@ chrono = { version = "0.4", features = ["serde"] }
 dirs = "5.0"
 dotenv = "0.15.0"
 open = "1.0"
+luaparse = "0.2.0"
+regex = "1.11.2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-cli = "2"

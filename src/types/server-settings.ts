@@ -4,19 +4,6 @@ export type ServerSettings = {
     loginTime: number;
     maxClientsPerIP: number;
     difficulty: number;
-    gameSettings: {
-      name: string;
-      value: boolean;
-    }[];
-    defaultTimeTable: {
-      year: number;
-      month: number;
-      day: number;
-      hour: number;
-      daysPassed: number;
-      dayTimeScale: number;
-      nightTimeScale: number;
-    };
     passTimeWhenEmpty: boolean;
     nightStartHour: number;
     nightEndHour: number;
@@ -60,4 +47,55 @@ export type ServerSettings = {
     maximumObjectScale: number;
     enforceDataFiles: boolean;
   };
+};
+
+export const DefaultServerSettings: ServerSettings = {
+  config: {
+    allowBedRest: true,
+    allowConsole: false,
+    allowFixmeCommand: true,
+    allowOnContainerForUnloadedCells: false,
+    allowSuicideCommand: true,
+    allowWait: true,
+    allowWildernessRest: true,
+    bountyDeathPenalty: false,
+    bountyResetOnDeath: false,
+    deathPenaltyJailDays: 5,
+    deathTime: 5,
+    difficulty: 0,
+    enableActorCollision: true,
+    enablePlacedObjectCollision: false,
+    enablePlayerCollision: true,
+    enforceDataFiles: true,
+    enforcedLogLevel: -1,
+    fixmeInterval: 30,
+    gameMode: "Default",
+    ignoreModifierWithMaxSkill: false,
+    loginTime: 60,
+    maxAcrobaticsValue: 1200,
+    maxAttributeValue: 200,
+    maxClientsPerIP: 3,
+    maxSkillValue: 200,
+    maxSpeedValue: 365,
+    maximumObjectScale: 20,
+    nightEndHour: 6,
+    nightStartHour: 20,
+    passTimeWhenEmpty: false,
+    physicsFramerate: 60,
+    pingDifferenceRequiredForAuthority: 40,
+    playersRespawn: true,
+    respawnAtImperialShrine: true,
+    respawnAtTribunalTemple: true,
+    shareBounty: false,
+    shareFactionExpulsion: false,
+    shareFactionRanks: true,
+    shareFactionReputation: true,
+    shareJournal: true,
+    shareMapExploration: false,
+    shareReputation: true,
+    shareTopics: true,
+    shareVideos: true,
+    useActorCollisionForPlacedObjects: false,
+    useInstancedSpawn: true,
+  },
 };

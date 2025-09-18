@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Nerevar",
   "version": "0.2.0",
-  "identifier": "com.nerevarapp.crab",
+  "identifier": "cc.nerevar",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",

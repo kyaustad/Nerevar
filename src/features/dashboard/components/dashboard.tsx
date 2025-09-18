@@ -21,6 +21,7 @@ import { FolderIcon, RouterIcon, SquarePenIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Tes3MPServerCard } from "@/features/launchers/tes3mp-server-card";
 import { invoke } from "@tauri-apps/api/core";
+import { ManualConnectCard } from "@/features/launchers/manual-connect-card";
 
 export function Dashboard() {
   const { config, isLoading } = useConfig();
@@ -116,11 +117,14 @@ export function Dashboard() {
                   </p>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {`Manage your Tes3MP installation and updates`}
+                  {`Manage your Tes3MP installation and updates. Updating Tes3MP will erase all your current settings and server configurations. Working on fixing this this.`}
                 </p>
               </div>
               <div className="flex flex-col col-span-2 gap-4 w-full h-full items-start">
                 <CheckForTes3MpUpdateButton className="w-full" />
+              </div>
+              <div className="flex flex-col col-span-2 gap-4 w-full h-full items-start">
+                <ManualConnectCard className="w-full max-h-64 min-h-full" />
               </div>
               <div className="flex flex-col col-span-1 gap-4 w-full h-full items-start">
                 <Tes3MPBrowserCard className="w-full max-w-md max-h-64 min-h-full" />
@@ -128,12 +132,13 @@ export function Dashboard() {
               <div className="flex flex-col col-span-1 gap-4 w-full h-full items-start">
                 <Tes3MPCard className="w-full max-w-md max-h-64 min-h-full" />
               </div>
+
               {/* Tes3MP Server */}
 
               {currentMode === "server" && (
                 <>
-                  <div className="flex flex-col col-span-1 gap-4 w-full h-full items-start">
-                    <Tes3MPServerCard className="w-full max-w-md max-h-64 min-h-full" />
+                  <div className="flex flex-col col-span-2 gap-4 w-full h-full items-start">
+                    <Tes3MPServerCard className="w-full  max-h-64 min-h-full" />
                   </div>
 
                   <Separator className="w-full col-span-2" />
