@@ -26,8 +26,7 @@ pub async fn download_latest_windows_release() -> Result<String, String> {
     log::info!("Will extract to: {}", extract_path.display());
 
     //Step 0: get latest release url from nerevar-api which returns a body json { url: string, version: string }
-    let api_url =
-        std::env::var("NEREVAR_API_URL").expect("NEREVAR_API_URL environment variable must be set");
+    let api_url = "https://nerevar.cc/api/v1";
     let version = match reqwest::get(format!("{}/releases/tes3mp", api_url)).await {
         Ok(response) => match response.json::<serde_json::Value>().await {
             Ok(url_response) => match url_response["version"].as_str() {
@@ -466,8 +465,7 @@ pub async fn check_for_tes3mp_update() -> Result<UpdateCheckResponse, String> {
         get_nerevar_config().map_err(|e| format!("Failed to get Nerevar config: {}", e))?;
     let config = config.ok_or("No Nerevar config found. Please install TES3MP first.")?;
     let current_version = config.version;
-    let api_url =
-        std::env::var("NEREVAR_API_URL").expect("NEREVAR_API_URL environment variable must be set");
+    let api_url = "https://nerevar.cc/api/v1";
     let response = reqwest::get(format!("{}/releases/tes3mp", api_url))
         .await
         .map_err(|e| format!("Failed to check for TES3MP update: {}", e))?;
@@ -491,8 +489,7 @@ pub async fn check_for_app_update() -> Result<UpdateCheckResponse, String> {
     // Get the current app version from the built-in version
     let current_version = env!("CARGO_PKG_VERSION");
 
-    let api_url =
-        std::env::var("NEREVAR_API_URL").expect("NEREVAR_API_URL environment variable must be set");
+    let api_url = "https://nerevar.cc/api/v1";
     let response = reqwest::get(format!("{}/releases/nerevar", api_url))
         .await
         .map_err(|e| format!("Failed to check for Nerevar update: {}", e))?;

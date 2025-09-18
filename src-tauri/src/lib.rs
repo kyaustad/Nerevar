@@ -10,9 +10,7 @@ pub use types::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    dotenv::dotenv().ok();
-    let api_url =
-        std::env::var("NEREVAR_API_URL").expect("NEREVAR_API_URL environment variable must be set");
+    let api_url = "https://nerevar.cc/api/v1";
     log::info!("Nerevar API URL: {}", api_url);
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
