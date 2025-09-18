@@ -17,4 +17,5 @@
 - [ ] auto generate and update requiredDataFiles.json from openMw mod list
 - [ ] use the generated requiredDataFiles.json for mod pack creation
 - [ ] Cross platform builds (Mac, Linux)
+- [ ] Fix the API frontend (Website: nerevar.cc) to work and reflect actual data as well as function for the server script repo
 - [x] Launch Tes3MP/Browser/OpenMW from Nerevar
