@@ -16,4 +16,5 @@
 - [ ] factory reset of the tes3mp installation
 - [ ] auto generate and update requiredDataFiles.json from openMw mod list
 - [ ] use the generated requiredDataFiles.json for mod pack creation
+- [ ] Cross platform builds (Mac, Linux)
 - [x] Launch Tes3MP/Browser/OpenMW from Nerevar
